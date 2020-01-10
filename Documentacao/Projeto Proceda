@@ -1,0 +1,28 @@
+NOTFIS - dados das notas fiscais remetidas ao transportador(utilizados normalmente para emissão de conhecimento de transporte)
+Embarcador mando pro transportador
+
+CONMEB - conhecimentos de transporte embarcados pelo transportador. 
+São enviados de volta para os embarcadores através de arquivos CONMEB
+
+OCOREN - eventos e ocorrencias durante o processo de entrega. (a cada novo evento do transporte, é enviado isso para o embarcador)
+
+PREFAT - quando o frete ta em conformidade com a tabela negociada e a notificação de entrega foi recebida - 
+conhecimento e valores liberados para faturamento e pagamento. (o embarcador precisa disponibilizar para o transportador) diz quais estão liberados
+para faturamento. 
+
+DOCCOB - A partir do arquivo PREFAT a transportadora pode emitir a fatura e duplicata a partir da qual será gerada o arquivo
+DOCCOB contendo os dados da mesma para o embarcador agendar e efetuar o pagamento dos fretes. 
+
+
+
+Primeira parte:
+
+vincular todas as informações com os clientes 
+
+vai ler o layout e se nao reconhecer vai ter q ter um maiszinho la pra informar a posição inicial e final da informação 
+e após informar pra tabela e campo q vai essa informação - as vezes nao vai precisar criar uma tabela nova, pois, por exemplo
+empresa a maioria vai ser igual salvo alguma excessao, entao vai ter que apenas informar qual a tabela e campo criado la. 
+
+
+
+

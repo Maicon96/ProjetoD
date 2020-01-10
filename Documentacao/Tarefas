@@ -1,0 +1,98 @@
+
+Tarefas do modelo ER e wireframes:
+
+	* Na tela de FTP colocar campo diretório. ok 
+	
+	* Colocar data de inicio e data fim no cliente e tirar do layout. ok 
+	
+	* Tirar cliente do layout ok 	
+	
+	* Colocar na lista de layouts botão copiar e informar que foi copiado de outro layout ok
+	
+	* Botar select para selecionar caractere ou por posições ok
+	
+	* Colocar tabela e campo na grid dos campos de cadastro do layout para dizer que tal campo vai para tal tabela esta ok
+	
+	* Tirar a descrição da linha no cadastro do layout ok
+	
+	* Tirar telas de delimitadores e campos e deixar pra editar layout na msm tela ok 
+	
+	* Trocar nome da tabela de t_import_cliente pra t_cliente ok 	
+	
+	* Adicionar campo indexador na tabela de delimitacoes ok
+	
+	* Criar tela de cadastro de layout futuro que deverá ser pensada como mostrar as informações 
+
+	* Criar cadastro de formas de recebimento sem vincular cliente(o cadastro será igual quando vincular um cliente, somente em locais 
+		diferentes no menu) 
+	
+	
+	* pra fazer dps:
+		fazer depara com json para dizer q campo "true" no arquivo equivale a "t" no banco da expresso
+		
+		fazer um modelo de carregar o arquivo com uma regua para mostrar as linhas e tal
+	
+		esquema pra remover caracteres especiais 
+
+
+Tarefas: 
+	
+	* Criar tela listando cadastros de layouts. - 6 horas (foi)
+	
+	* Criar uma tela de listagem dos clientes - 6 horas (foi)
+	
+	* Criar tela de consulta e cadastro de configuração de pasta - 10 horas (foi)
+	
+	* Criar tela de consulta e cadastro de configuração de email - 10 horas (foi)
+	
+	* Criar tela de consulta e cadastro de configuração de ftp - 10 horas (foi)
+
+	* Criar autenticação via AD com auxilio da expresso SM. - 8 horas
+	
+	* Criar tela de cadastros de layouts - 60 horas
+		* deverá ter um formulário com os campos que estão nos wireframes. 
+		* o campo nome tabela deverá realizar uma busca na api da expresso SM.
+	
+	* Criar uma tela de cadastro dos clientes - 40 horas
+		* Onde deverá informar o cnpj, para buscar o nome do cliente na api da expresso sm (falta fazer)
+		* definir o layout daquele cliente (foi)
+		* criar abas das formas de recebimento, com pasta, e-mail e FTP com seus respectivos formulários de cadastros (foi, mas falta testar bem ainda) 
+			
+	* Criar robo para verificar os recebimentos de arquivos e para importar os dados dos arquivos na base de dados. 50 horas
+	
+	* Criar rotina de importação de dados dos arquivos para o banco - 40 horas
+	
+	* Criar menu lateral buscando dados da api da expresso SM - 10 horas
+	
+	* Ajustar cores do sistema e detalhes de informações na tela se possível conforme os da expresso. 15 horas
+	
+	
+	
+	7
+	4
+	4
+	8
+	8
+	7.25
+	4
+	7.40
+	7.50
+	8
+	8
+	7.45
+	4
+	7.45
+	8
+	7.40
+	8
+	8
+	7.40
+	8
+	----
+	138.85
+			
+	
+		
+	
+		
+		
