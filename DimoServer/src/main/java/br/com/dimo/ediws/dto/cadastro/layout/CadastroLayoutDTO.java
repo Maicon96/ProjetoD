@@ -3,11 +3,10 @@ package br.com.dimo.ediws.dto.cadastro.layout;
 import java.util.ArrayList;
 import java.util.List;
 
-import br.com.dimo.ediws.entity.Layout;
-
 public class CadastroLayoutDTO {
 	
-	public Layout layout;	
+//	public Layout layout;	
+	public LayoutDTO layout;
 	public List<CadastroLayoutArquivoDTO> cadastroLayoutArquivoDTOs = new  ArrayList<CadastroLayoutArquivoDTO>();	
 
 	
@@ -16,11 +15,11 @@ public class CadastroLayoutDTO {
 	}
 
 	
-	public Layout getLayout() {
+	public LayoutDTO getLayout() {
 		return layout;
 	}
 
-	public void setLayout(Layout layout) {
+	public void setLayout(LayoutDTO layout) {
 		this.layout = layout;
 	}
 

@@ -1,11 +1,13 @@
 import React, { Component } from 'react';
 import {
     Form, Select, Input, Switch, Divider, Tabs, Row, Col, Button,
-    InputNumber, Icon, Table, Collapse, notification
+    InputNumber, Icon, Table, Collapse, notification, Steps
 } from 'antd';
 import debounce from 'lodash/debounce';
 
 const { TabPane } = Tabs;
+
+const { Step } = Steps;
 
 const ajax = require('../../../utils/ajax/ConexaoAjax');
 const globalVariables = require('../../../utils/variaveisGlobais');
@@ -22,59 +24,14 @@ const FormItem = Form.Item;
 const { Panel } = Collapse;
 
 let copia = '';
+let identificadorLinha = '';
+let tipoDelimitador = '';
 let hiddenCopia = '';
 let descricao = '';
 let padrao = '';
 let linhas = {};
 let tabelas = [];
 let item = [];
-
-
-
-const jsonTeste = {
-    layout: {
-        descricao: "layout proceda",
-        padrao: 1
-    },
-    cadastroLayoutArquivoDTOs: [
-        {
-            identificadorLinha: "584",
-            cadastroLayoutArquivoDTOs: [
-                {
-                    caractere: "",
-                    indexador: "",
-                    posicaoInicial: "1",
-                    posicaoFinal: "10",
-                    nomeCampo: "",
-                    nomeCampoTabela: "nome_empresa",
-                    jsonDepara: "",
-                    nomeTabela: ""
-                },
-                {
-                    caractere: "",
-                    indexador: "",
-                    posicaoInicial: "11",
-                    posicaoFinal: "25",
-                    nomeCampo: "Código Produto",
-                    nomeCampoTabela: "cod_produto",
-                    jsonDepara: "",
-                    nomeTabela: "tbl_produtos"
-                },
-                {
-                    caractere: "",
-                    indexador: "",
-                    posicaoInicial: "26",
-                    posicaoFinal: "40",
-                    nomeCampo: "Descrição Produto",
-                    nomeCampoTabela: "descricao_produto",
-                    jsonDepara: "",
-                    nomeTabela: "tbl_produtos"
-                }
-            ]
-        }
-    ]
-
-};
 
 
 const EditableContext = React.createContext();
@@ -119,12 +76,6 @@ class EditableCell extends React.Component {
         return editing ? (
             <Form.Item style={{ margin: 0 }}>
                 {form.getFieldDecorator(dataIndex, {
-                    rules: [
-                        {
-                            required: true,
-                            message: `${title} é necessário.`,
-                        },
-                    ],
                     initialValue: record[dataIndex],
                 })(<Input ref={node => (this.input = node)} onPressEnter={this.save} onBlur={this.save} />)}
             </Form.Item>
@@ -172,6 +123,24 @@ class LayoutArquivoCad extends Component {
 
         this.key = 1;
 
+
+        this.hiddenCopia = true;
+
+        if (this.props.location.params) {
+            if (this.props.location.params.record) {
+                this.record = props.location.params.record;
+                this.copia = props.location.params.record.copia;
+                this.descricao = props.location.params.record.descricao;
+                this.padrao = props.location.params.record.padrao;
+                this.identificadorLinha = props.location.params.record.identificadorLinha;
+                this.tipoDelimitador = props.location.params.record.tipoDelimitador;
+                console.log(this.record);
+            }
+        }
+
+        this.fetchLayouts = debounce(this.fetchLayouts, 800);
+
+
         this.state = {
             loading: false,
             confirmDirty: false,
@@ -179,32 +148,144 @@ class LayoutArquivoCad extends Component {
             value: [],
             fetching: false,
             linhas: [],
-            tipo_delimitador_arquivo: '1',
-            tipo_delimitador_empresa: '1',
+            nome_tabela: "",
+            tabelas: [],
+            tipo_delimitador: this.tipoDelimitador ? this.tipoDelimitador.toString() : '',
             components: null,
-            columns: []
+            columns: [],
+            current: 0
         };
+    }
 
-        this.hiddenCopia = true;
+    loadTableLayoutByList = (linhas, tableList) => {
 
-        if (this.props.location.params) {
-            if (this.props.location.params.record) {
-                this.copia = props.location.params.record.copia;
-                this.descricao = props.location.params.record.descricao;
-                this.padrao = props.location.params.record.padrao;
+        let linhaTableColumns = {};
+
+        // console.log("Linhas");
+        // console.log(linhas);
+        ajax.Call({
+            url: globalVariables.default.baseURLServer + '/service/layout/arquivo//buscar/tabelas',
+            fnSetLoading: this.onSetLoading,
+            data: {
+                tabelas: tableList.map(t => ({ nomeTabela: t }))
+            },
+            afterMsgSuccessTrue: (response) => {
+                const tabelas = response.data.registro.tabelas;
+
+                // console.log(tabelas);
+
+                for (let tabela of tabelas) {
+                    const nomeTabela = tabela.nomeTabela;
+                    const campos = tabela.campos;
+                    for (let linha of Object.keys(linhas)) {
+
+                        linhaTableColumns[linha] = {};
+
+                        if (linhas[linha].tabelas[nomeTabela]) {
+                            linhaTableColumns[linha][nomeTabela] = linhas[linha].tabelas[nomeTabela].dados.map(c => c.Campo);
+
+                            // console.log(`Colunas ${linha} - ${nomeTabela}`);
+
+                            // console.log(linhaTableColumns[linha][nomeTabela])
+                            for (let campo of campos) {
+                                if (linhaTableColumns[linha][nomeTabela].indexOf(campo.nomeCampo) === -1) {
+                                    // Insere a linha que não estiver na tabela salva
+                                    linhas[linha].tabelas[nomeTabela].dados.push({
+                                        Campo: campo.nomeCampo,
+                                        tipoCampo: "String",
+                                        posInicial: 0,
+                                        posFinal: 0,
+                                        codLinha: linha,
+                                        nomeTabela: nomeTabela,
+                                        indexador: 0,
+                                        key: ++this.key,
+                                        jsonDepara: "{}"
+                                    });
+                                    linhaTableColumns[linha][nomeTabela].push(campo.nomeCampo);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        return linhas;
+    }
+
+    handleLoadTables = (data) => {
+        let linhas = {};
+        let tableList = [];
+
+        if (data.linhas && data.linhas.length > 0) {
+            for (let linha of data.linhas) {
+                if (!linhas[linha.identificadorLinha]) {
+                    linhas[linha.identificadorLinha] = {
+                        id: linha.id,
+                        codLinha: linha.identificadorLinha,
+                        descricaoLinha: 'Linha ' + linha.identificadorLinha,
+                        tabelas: {},
+                        nomeTabelas: [],
+                        inputTabela: ""
+                    }
+                }
+
+                if (linha.layoutArquivoCampoTabelas.length > 0) {
+                    for (let col of linha.layoutArquivoCampoTabelas) {
+                        const nomeTabela = col.nomeTabela;
+                        if (tableList.indexOf(nomeTabela) === -1) {
+                            tableList.push(nomeTabela);
+                        }
+                        if (!linhas[linha.identificadorLinha].tabelas[nomeTabela]) {
+                            linhas[linha.identificadorLinha].tabelas[nomeTabela] = {
+                                dados: [],
+                                nome: nomeTabela,
+                                problema: false,
+                                key: this.key++,
+                            };
+                        }
+
+                        const row = {
+                            id: col.id,
+                            idLayoutArquivo: col.idLayoutArquivo,
+                            idLayout: col.idLayout,
+                            Campo: col.nomeCampo,
+                            tipoCampo: "String",
+                            posInicial: parseInt(col.posicaoInicial) || null,
+                            posFinal: parseInt(col.posicaoFinal) || null,
+                            codLinha: linha.identificadorLinha,
+                            nomeTabela: nomeTabela,
+                            indexador: col.indexador || null,
+                            key: this.key++,
+                            jsonDepara: col.jsonDepara
+                        }
+                        linhas[linha.identificadorLinha].tabelas[nomeTabela].dados.push(row);
+                    }
+                }
+
+                linhas[linha.identificadorLinha].nomeTabelas = Object.keys(linhas[linha.identificadorLinha].tabelas);
             }
         }
 
-        this.fetchLayouts = debounce(this.fetchLayouts, 800);
 
 
+        linhas = this.loadTableLayoutByList(linhas, tableList);
+        var tabelas = [];
+        for (let l of Object.keys(linhas)) {
+            const linha = linhas[l];
+            const tabs = linha.tabelas;
+            for (let t of Object.keys(tabs)) {
+                tabelas.push(tabs[t]);
+            }
+        }
 
-        this.getColumnsTabela(1);
+        this.setState({ linhas, tabelas });
+        this.getColumnsTabela(this.state.tipo_delimitador);
     }
+
 
     callback(key) {
 
-        console.log(key);
+        // console.log(key);
 
         //activeTab = key;
 
@@ -212,50 +293,72 @@ class LayoutArquivoCad extends Component {
     }
 
     teste() {
-        console.log("entrou nessa merda");
+        // console.log("entrou nessa merda");
+    }
+
+    validaTabelas = () => {
+
     }
 
 
     handleSave = row => {
-        let linhas = this.state.linhas;
-        let tabela = linhas[row.codLinha].tabelas[row.nomeTabela];
+        let linhas;
+        let tabela;
+        let tabelas;
+        let i;
+
+        if (this.state.tipo_delimitador == 2) {
+            linhas = this.state.linhas;
+            tabela = linhas[row.codLinha].tabelas[row.nomeTabela];
+        } else {
+            tabelas = this.state.tabelas;
+            console.log(tabelas);
+            i = tabelas.findIndex(t => t.nome == row.nomeTabela);
+            tabela = tabelas[i];
+        }
+
         const newData = [...tabela.dados];
 
         const index = newData.findIndex(item => row.key === item.key);
 
         const item = newData[index];
 
-        let ok = row.posInicial < row.posFinal;
+        row.posInicial = parseInt(row.posInicial);
+        row.posFinal = parseInt(row.posFinal);
 
-        if (index !== 0) {
-            const itemAbove = newData[index - 1];
-            ok &= row.posInicial > itemAbove.posFinal;
-        }
-
-
-        if (ok) {
-            linhas[row.codLinha].tabelas[row.nomeTabela].problema = false;
-            newData.splice(index, 1, {
-                ...item,
-                ...row,
-            });
+        newData.splice(index, 1, {
+            ...item,
+            ...row,
+        });
+        if (this.state.tipo_delimitador == 2) {
             linhas[row.codLinha].tabelas[row.nomeTabela].dados = newData;
-        } else
-            linhas[row.codLinha].tabelas[row.nomeTabela].problema = true;
-        this.setState({ linhas });
+
+            this.setState({ linhas });
+        }
+        else {
+            tabela.dados = newData;
+            tabelas[i] = tabela;
+            console.log(tabelas);
+            this.setState({ tabelas });
+        }
     };
 
     componentDidMount() {
+        if (this.record)
+            this.handleLoadTables(this.record);
+
+        this.getColumnsTabela(this.state.tipo_delimitador);
+
         const me = this;
 
         if (this.props.location.params) {
 
-            console.log(this.props.location.params);
-            console.log(this.props.location.params.record);
+            // console.log(this.props.location.params);
+            // console.log(this.props.location.params.record);
 
             if (this.props.location.params.record) {
 
-                this.props.form.setFieldsValue(this.props.location.params.record);
+                // this.props.form.setFieldsValue(this.props.location.params.record);
 
                 //this.props.form.setFieldsValue({ idLayout: layoutDescricao });
             }
@@ -284,26 +387,69 @@ class LayoutArquivoCad extends Component {
     getLayouts = (form) => {
         let values = [];
 
-        const linhas = this.state.linhas;
+        let linhas = {};
+        if (this.state.tipo_delimitador == 1) {
+            let tabelas = {};
+            linhas[0] = { id: null };
+            this.state.tabelas.map(t => {
+                tabelas[t.nome] = t;
+                linhas[0].id = t.dados[0].idLayoutArquivo ? t.dados[0].idLayoutArquivo : linhas[0].id;
+            })
+            linhas[0].tabelas = tabelas;
+        } else {
+            linhas = this.state.linhas;
+        }
 
         for (let l of Object.keys(linhas)) {
             let d = [];
             let tmp = {
+                id: linhas[l].id,
                 identificadorLinha: l,
                 cadastroLayoutArquivoDTOs: []
             };
             for (let t of Object.keys(linhas[l].tabelas)) {
                 for (let row of linhas[l].tabelas[t].dados) {
+
+
+                    if (this.state.tipo_delimitador == 1) {
+
+                        if (row.indexador !== 0 && !row.indexador) {
+                            continue;
+                        }
+                    } else {
+                        if (!row.posInicial && !row.posFinal) {
+                            continue;
+                        }
+                    }
+
+                    const posicao = this.state.tipo_delimitador == 1
+                        ?
+                        { indexador: row.indexador }
+                        :
+                        {
+                            posicaoInicial: row.posInicial,
+                            posicaoFinal: row.posFinal
+                        };
+
+
+                    const id = row.id ? {
+                        id: row.id,
+                        idLayoutArquivo: row.idLayoutArquivo,
+                        idLayout: row.idLayout,
+                    } : {};
+
                     d.push({
+                        ...id,
                         caractere: form.caractere,
                         indexador: "",
-                        posicaoInicial: row.posInicial,
-                        posicaoFinal: row.posFinal,
                         nomeCampo: row.Campo,
                         nomeCampoTabela: row.Campo,
-                        jsonDepara: "",
-                        nomeTabela: t
+                        jsonDepara: row.jsonDepara,
+                        nomeTabela: t,
+                        ...posicao
                     });
+
+
                 }
             }
             tmp.cadastroLayoutArquivoDTOs = d;
@@ -327,19 +473,44 @@ class LayoutArquivoCad extends Component {
                 });
                 return;
             }
+
+            const tableWithError = this.checkTableValues();
+            if (tableWithError) {
+                notification.error({
+                    message: 'Erro ao salvar layout!',
+                    description: `As posições informadas na tabela ${tableWithError} estão incorretas.`,
+                    duration: 7,
+                });
+                return;
+            }
+
+            const send_char = this.state.tipo_delimitador == 1;
+
+            console.log(values.identificadorLinha_empresa);
+            console.log(values.delimitador_empresa);
+
+            const id = this.record && this.record.id ? { id: this.record.id } : {};
             const json = {
                 layout: {
-                    linha: values.linha_empresa,
-                    posicao_inicial: values.posicao_inicial,
-                    posicao_final: values.posicao_final,
-                    delimitador: values.caractere_empresa,
-                    indexador: "",
-
+                    ...id,
+                    nomeEmpresa: values.cpf_empresa,
+                    identificadorLinha: values.identificadorLinha_empresa ? 1 : 0,
+                    tipoDelimitador: this.state.tipo_delimitador,
+                    posicaoInicial: !send_char ? values.posicao_inicial : null,
+                    posicaoFinal: !send_char ? values.posicao_final : null,
+                    delimitador: send_char ? values.caractere : null,
+                    indexador: send_char ? values.indexador_empresa : null,
                     descricao: values.descricao,
-                    padrao: values.padrao ? 1 : 0
+                    cabecalho: values.cabecalho,
+                    padrao: values.padrao ? 1 : 0,
                 },
                 cadastroLayoutArquivoDTOs: this.getLayouts(values)
             };
+
+            console.log("Json enviado")
+            console.log(json);
+            console.log("--------------")
+
 
             ajax.Call({
                 url: globalVariables.default.baseURLServer + '/service/layout/arquivo/save',
@@ -393,7 +564,7 @@ class LayoutArquivoCad extends Component {
 
     handlechangeCPF(value) {
 
-        console.log("entrou no handlechange");
+        // console.log("entrou no handlechange");
 
         /*this.setState({
             cpfcnpj: metodos.formatCPFCNPJ(value.target.value), value,
@@ -479,15 +650,18 @@ class LayoutArquivoCad extends Component {
 
     nomeTabelaChanged = (e) => {
         let linhas = this.state.linhas;
-        linhas[e.target.name].inputTabela = e.target.value;
-        this.setState({ linhas });
+        let t = e.target.value;
+        if (this.state.tipo_delimitador == 2) {
+            linhas[e.target.name].inputTabela = t;
+        }
+        this.setState({ linhas, nome_tabela: t });
     }
 
     adicionarLinha = () => {
         this.props.form.validateFields((err, values) => {
             if (values.linha > 0) {
 
-
+                let linhas = this.state.linhas;
                 let codLinha = values.linha;
                 let descricaoLinha = 'Linha ' + codLinha;
 
@@ -508,13 +682,21 @@ class LayoutArquivoCad extends Component {
     }
 
     deleteTabela = (codLinha, nomeTabela) => {
-        let linhas = this.state.linhas;
-        let tabelas = linhas[codLinha].tabelas;
-        let index = linhas[codLinha].nomeTabelas.indexOf(nomeTabela);
-        delete linhas[codLinha].nomeTabelas[index];
-        delete tabelas[nomeTabela];
-        linhas[codLinha].tabelas = tabelas;
-        this.setState({ linhas });
+
+        if (this.state.tipo_delimitador == 2) {
+            let linhas = this.state.linhas;
+            let tabelas = linhas[codLinha].tabelas;
+            let index = linhas[codLinha].nomeTabelas.indexOf(nomeTabela);
+            delete linhas[codLinha].nomeTabelas[index];
+            delete tabelas[nomeTabela];
+            linhas[codLinha].tabelas = tabelas;
+            this.setState({ linhas });
+        } else {
+            let tabelas = this.state.tabelas;
+            let index = tabelas.findIndex(t => t.nome === nomeTabela);
+            delete tabelas[index];
+            this.setState({ tabelas });
+        }
     }
 
     deleteLinha = (codLinha) => {
@@ -524,108 +706,107 @@ class LayoutArquivoCad extends Component {
     }
 
     adicionarTabela = (codLinha) => {
-        const me = this; 
 
-        this.getColumnsTabela(this.state.tipo_delimitador_arquivo);
+        const me = this;
 
-        let linha = this.state.linhas[codLinha];
+        let linhas;
+        let tabelas = this.state.tabelas;
+        let linha;
 
-        //this.buscarTabela("planos");
+        this.getColumnsTabela(this.state.tipo_delimitador);
 
-        console.log(linha.inputTabela);
+        if (this.state.tipo_delimitador == 2) {
+            linhas = this.state.linhas;
+            linha = linhas[codLinha];
 
+            if (Object.keys(linha.tabelas).indexOf(linha.inputTabela) !== -1) {
+                notification.error({
+                    message: 'Erro ao adicionar tabela!',
+                    description: 'Esta tabela já foi adicionada a esta linha.',
+                    duration: 3,
+                });
+                return;
+            }
+        }
+
+        const nomeTabela = linha ? linha.inputTabela : this.state.nome_tabela;
         ajax.Call({
             url: globalVariables.default.baseURLServer + '/service/layout/arquivo//buscar/tabela',
             fnSetLoading: me.onSetLoading,
             data: {
-                nomeTabela: linha.inputTabela
-            },            
-            afterMsgSuccessTrue: function (response) {               
-                console.log(response);
-                console.log(response.data.registro.campos);
-
-                const data = response.data.registro.campos.map(campo => ({                                 
-                    Campo: campo.nomeCampo,
+                nomeTabela: nomeTabela
+            },
+            afterMsgSuccessTrue: (response) => {
+                const data = response.data.registro.campos.map((value, index) => ({
+                    Campo: value.nomeCampo,
                     tipoCampo: "String",
                     posInicial: 0,
                     posFinal: 0,
                     codLinha: codLinha,
-                    nomeTabela: linha.inputTabela,
-                    key: this.key++
+                    nomeTabela: nomeTabela,
+                    indexador: index,
+                    key: index,
+                    jsonDepara: "{}"
                 }));
 
-                linha.tabelas[linha.inputTabela] = {
+                const t = {
                     dados: data,
-                    nome: linha.inputTabela,
+                    nome: nomeTabela,
                     problema: false,
                     key: this.key++,
                 };
 
-                console.log("aqqq");
-                console.log(linha.tabelas);
-        
-                linha.nomeTabelas.push(linha.inputTabela);
-                linha.inputTabela = "";      
-                linhas[codLinha] = linha;
-                me.setState({ linhas: linhas });
+                tabelas.push(t);
+                this.setState({ tabelas });
+
+                if (linha) {
+                    linha.tabelas[linha.inputTabela] = t;
+
+
+                    linha.nomeTabelas.push(linha.inputTabela);
+                    linha.inputTabela = "";
+                    linhas[codLinha] = linha;
+                    me.setState({ linhas: linhas });
+                }
+
             }
         });
 
+    }
 
-        /*const data = [
-            {
-                Campo: "Nome",
-                tipoCampo: "string",
-                posInicial: 10,
-                posFinal: 15,
-                codLinha: codLinha,
-                nomeTabela: linha.inputTabela,
-                key: this.key++,
-                posicao: 1,
-            },
-            {
-                Campo: "Nome",
-                tipoCampo: "string",
-                posInicial: 16,
-                posFinal: 20,
-                codLinha: codLinha,
-                nomeTabela: linha.inputTabela,
-                key: this.key++,
-                posicao: 2,
+    checkTableValues = () => {
+        const linhas = this.state.linhas;
+        for (let codigo of Object.keys(linhas)) {
+            const linha = linhas[codigo];
+            for (let nomeTabela of Object.keys(linha.tabelas)) {
+                const dados = linha.tabelas[nomeTabela].dados;
+                for (let i = 0; i < dados.length; i++) {
+                    if (this.state.tipo_delimitador == 2) {
+                        const item = dados[i];
+                        try {
+                            const json = JSON.parse(item.jsonDepara);
+                        } catch (e) {
+                            // console.log("Error json: " + e);
+                            // return nomeTabela;
+                        }
+                        var ok = true;
+                        if (item.posInicial && item.posFinal) {
+                            ok &= item.posInicial < item.posFinal
+                        }
+                        // if (i > 0) {
+                        //     ok &= item.posInicial > dados[i - 1].posFinal;
+                        // }
+                        if (!ok) return nomeTabela;
+                    }
+                }
             }
-        ];
-
-        linha.tabelas[linha.inputTabela] = {
-            dados: data,
-            nome: linha.inputTabela,
-            problema: false,
-            key: this.key++,
-        };
-
-        linha.nomeTabelas.push(linha.inputTabela);
-
-        linha.inputTabela = "";
-
-        linhas[codLinha] = linha;
-
-        this.setState({ linhas: linhas });
-
-        */
-
+        }
+        return false;
     }
 
-    tipoDelimitadorInfosChanged = (value) => {
-        console.log(`VALOR: ${value}`);
-        this.setState({ tipo_delimitador_arquivo: value });
-        console.log(`VALOR: ${value}`);
+    tipoDelimitadorChanged = (value) => {
+        this.setState({ tipo_delimitador: value });
         this.getColumnsTabela(value);
-        console.log(`VALOR: ${value}`);
-
-        // console.log(this.state.columns);
-    }
-
-    tipoDelimitadorEmpresaChanged = (value) => {
-        this.setState({ tipo_delimitador_empresa: value });
     }
 
     getColumnsTabela = (tipo) => {
@@ -641,13 +822,11 @@ class LayoutArquivoCad extends Component {
             },
         ];
 
-        console.log(tipo);
-
         if (tipo == 1) {
             colunasTabela.push(
                 {
                     title: 'Posição',
-                    dataIndex: 'posição',
+                    dataIndex: 'indexador',
                     editable: true
                 });
         } else if (tipo == 2) {
@@ -664,6 +843,14 @@ class LayoutArquivoCad extends Component {
                     editable: true
                 });
         }
+
+
+        colunasTabela.push(
+            {
+                title: 'De Para',
+                dataIndex: 'jsonDepara',
+                editable: true
+            });
         const components = {
             body: {
                 row: EditableFormRow,
@@ -686,10 +873,10 @@ class LayoutArquivoCad extends Component {
             };
         });
 
-        console.log(columns);
-
         this.setState({ components, columns });
     }
+
+    onStepChange = current => this.setState({ current });
 
 
 
@@ -705,421 +892,488 @@ class LayoutArquivoCad extends Component {
         });
 
         return (
-            < Form onSubmit={this.handleSubmit} >
+            < Form style={{ margin: '16px' }} onSubmit={this.handleSubmit} >
 
-                {this.descricao}
-                <Divider style={{ fontSize: 25 }} >Cadastro de Layout</Divider>
+                <Steps current={this.state.current} onChange={this.onStepChange} style={{ marginBottom: '20px' }}>
+                    <Step title="Cadastro do layout" />
+                    <Step title="Identificação da Empresa" />
+                    <Step title="Arquivo" />
+                </Steps>
 
-
-                <FormItem style={{ width: '100%', left: '0px' }}
-                    {...
-                    {
-                        labelCol: { span: 4 },
-                        wrapperCol: { span: 16 }
-                    }
-                    }
-                    label="Descrição:">
-                    {getFieldDecorator('descricao', {
-                        initialValue: '1',
-                        rules: [{
-                            required: true,
-                            message: 'Este campo é obrigatório!'
-                        }]
-                    })(<Input />)}
-                </FormItem>
-
-
-                <Divider style={{ fontSize: 22 }} >Identificador da empresa</Divider>
-                <Row gutter={20}>
-                    <Col span={8}>
-                        <FormItem style={{ width: '100%', left: '0px' }}
-                            {...
-                            {
-                                labelCol: { span: 12 },
-                                wrapperCol: { span: 12 }
-                            }
-                            }
-                            label="Identificador de Linha:">
-                            {getFieldDecorator('identificadorLinha_empresa', {
-                                initialValue: false,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Switch />)}
-                        </FormItem>
-                    </Col>
-
-                    <Col span={6}>
-                        <FormItem style={{ width: '100%', left: '0px' }}
-                            {...
-                            {
-                                labelCol: { span: 8 },
-                                wrapperCol: { span: 8 }
-                            }
-                            }
-                            label="Delimitador:">
-                            {getFieldDecorator('delimitador_empresa', {
-                                initialValue: this.state.tipo_delimitador_empresa,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Select
-                                value={this.state.tipo_delimitador_empresa}
-                                onChange={this.tipoDelimitadorEmpresaChanged}
-                                style={{ width: 120 }}
-                            >
-                                <Option value="1">Caractere</Option>
-                                <Option value="2">Posições</Option>
-                            </Select>)}
-                        </FormItem>
-
-
-                    </Col>
-
-                    <Col span={6}>
-                        <FormItem style={{ width: '100%', left: '0px' }}
-                            {...
-                            {
-                                labelCol: { span: 8 },
-                                wrapperCol: { span: 8 }
-                            }
-                            }
-                            label="Cabeçalho:">
-                            {getFieldDecorator('cabecalho_empresa', {
-                                initialValue: false,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Switch />)}
-                        </FormItem>
-                    </Col>
-
-                </Row>
-                <Row>
-                    <div hidden={this.state.tipo_delimitador_empresa != 2}>
-                        <Col md={{ offset: 10 }}>
-                            <FormItem
+                <div hidden={this.state.current != 0} >
+                    <Row>
+                        <Col span={12}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
                                 {...
                                 {
                                     labelCol: { span: 6 },
-                                    wrapperCol: { span: 4 }
+                                    wrapperCol: { span: 6 }
                                 }
                                 }
-                                label="Posição inicial:">
-                                {getFieldDecorator('posicao_inicial', {
-                                    initialValue: '',
+                                label="Descrição:">
+                                {getFieldDecorator('descricao', {
+                                    initialValue: this.record ? this.record.descricao : '',
                                     rules: [{
                                         required: true,
                                         message: 'Este campo é obrigatório!'
                                     }]
                                 })(<Input />)}
                             </FormItem>
+                        </Col>
+                        <Col span={12}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 6 },
+                                    wrapperCol: { span: 6 }
+                                }
+                                }
+                                label="Padrão:">
+                                {getFieldDecorator('padrao', {
+                                    initialValue: this.record ? this.record.padrao == 1 : false,
+                                    valuePropName: 'checked',
+                                    rules: [{
+                                        required: true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Switch />)}
+                            </FormItem>
+                        </Col>
+
+                        <Col span={8}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 12 },
+                                    wrapperCol: { span: 12 }
+                                }
+                                }
+                                label="Identificador de Linha:">
+                                {getFieldDecorator('identificadorLinha_empresa', {
+                                    initialValue: this.record ? this.record.identificadorLinha == 1 : false,
+                                    valuePropName: 'checked',
+                                    rules: [{
+                                        required: true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Switch />)}
+                            </FormItem>
+                        </Col>
+
+                        <Col span={10}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 8 },
+                                    wrapperCol: { span: 8 }
+                                }
+                                }
+                                label="Tipo Delimitador:">
+                                {getFieldDecorator('delimitador_empresa', {
+                                    initialValue: this.state.tipo_delimitador,
+                                    valuePropName: 'checked',
+                                    rules: [{
+                                        required: true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Select
+                                    value={this.state.tipo_delimitador}
+                                    onChange={this.tipoDelimitadorChanged}
+                                    style={{ width: 120 }}
+                                >
+                                    <Option value="1">Caractere</Option>
+                                    <Option value="2">Posições</Option>
+                                </Select>)}
+                            </FormItem>
+                        </Col>
+                    </Row>
+                    <Row>
+
+                        <Col hidden={this.state.tipo_delimitador != 1}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 4 },
+                                    wrapperCol: { span: 4 }
+                                }
+                                }
+                                label="Delimitador:">
+                                {getFieldDecorator('caractere', {
+                                    initialValue: this.record ? this.record.delimitador : '',
+                                    rules: [{
+                                        required: this.state.tipo_delimitador != 1 ? false : true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Input />)}
+                            </FormItem>
+                        </Col>
+
+                        <Col hidden={this.state.tipo_delimitador != 1}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 4 },
+                                    wrapperCol: { span: 4 }
+                                }
+                                }
+                                label="Cabeçalho:">
+                                {getFieldDecorator('cabecalho', {
+                                    initialValue: this.record && this.record.cabecalho ? this.record.cabecalho == true : false,
+                                    valuePropName: 'checked',
+                                    rules: [{
+                                        required: this.state.tipo_delimitador != 1 ? false : true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Switch />)}
+                            </FormItem>
+                        </Col>
+
+                    </Row>
+
+                </div>
+
+                <div hidden={this.state.current != 1}>
+                    <Row gutter={20}>
+
+                        <Col span={16}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 12 },
+                                    wrapperCol: { span: 12 }
+                                }
+                                }
+                                label="CPF da Empresa:">
+                                {getFieldDecorator('cpf_empresa', {
+                                    initialValue: this.record ? this.record.nomeEmpresa : '',
+                                    rules: [{
+                                        required: true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Input />)}
+                            </FormItem>
+                        </Col>
+
+                        {/* 
+                        <Col span={6}>
+
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 4 },
+                                    wrapperCol: { span: 5 }
+                                }
+                                }
+                                label="Linha:">
+                                <Row gutter={8}>
+                                    <Col span={12}>
+                                        {getFieldDecorator('linha_empresa', {
+                                            initialValue: this.record ? this.record.linha : ''
+                                        })(
+                                            <InputNumber />
+                                        )}
+                                    </Col>
+                                </Row>
+                            </FormItem>
+                        </Col> */}
+
+                    </Row>
+                    {/* <Row>
+                        <Col offset={1} span={2} hidden={this.state.tipo_delimitador != 2}>
+                            <FormItem
+                                label="Posição Inicial:">
+                                {getFieldDecorator('posicao_inicial', {
+                                    initialValue: this.record ? this.record.posicaoInicial : '',
+                                    rules: [{
+                                        required: this.state.tipo_delimitador == 2,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<InputNumber />)}
+                            </FormItem>
 
                         </Col>
 
 
-                        <Col md={{ offset: 10 }}>
+                        <Col offset={1} span={2} hidden={this.state.tipo_delimitador != 2}>
                             <FormItem
-                                {...
-                                {
-                                    labelCol: { span: 6 },
-                                    wrapperCol: { span: 4 }
-                                }
-                                }
                                 label="Posição Final:">
                                 {getFieldDecorator('posicao_final', {
-                                    initialValue: '',
+                                    initialValue: this.record ? this.record.posicaoFinal : '',
                                     rules: [{
-                                        required: true,
+                                        required: this.state.tipo_delimitador == 2,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<InputNumber />)}
+                            </FormItem>
+
+                        </Col>
+
+                        <Col offset={1} span={2} hidden={this.state.tipo_delimitador != 1}>
+                            <FormItem
+                                label="Delimitador:">
+                                {getFieldDecorator('caractere_empresa', {
+                                    initialValue: this.record ? this.record.delimitador : '',
+                                    rules: [{
+                                        required: this.state.tipo_delimitador != 1 ? false : true,
                                         message: 'Este campo é obrigatório!'
                                     }]
                                 })(<Input />)}
                             </FormItem>
 
                         </Col>
-
-                    </div>
-                    <div hidden={this.state.tipo_delimitador_empresa != 1}>
-                        <Col md={{ offset: 10 }}>
+                        <Col offset={1} span={2} hidden={this.state.tipo_delimitador != 1}>
                             <FormItem
+                                label="Indexador:">
+                                {getFieldDecorator('indexador_empresa', {
+                                    initialValue: this.record ? this.record.indexador : '',
+                                    rules: [{
+                                        required: this.state.tipo_delimitador != 1 ? false : true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Input />)}
+                            </FormItem>
+
+                        </Col>
+                    </Row> */}
+                </div>
+
+                <div hidden={this.state.current != 2}>
+
+                    <FormItem hidden={true} style={{ width: '40%', left: '0px' }}
+                        {...formItemLayout} label="ID">
+                        {getFieldDecorator('id', {})(<Input disabled={true} />)}
+                    </FormItem>
+
+                    <FormItem hidden={this.hiddenCopia} style={{ width: '100%', left: '0px' }}
+                        {...
+                        {
+                            labelCol: { span: 4 },
+                            wrapperCol: { span: 16 }
+                        }
+                        }
+                        label="Cópia:">
+                        {getFieldDecorator('copia', {})(<Input disabled={true} />)}
+                    </FormItem>
+
+
+
+                    <Row gutter={20}>
+
+                        {/*<Col span={8}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
                                 {...
                                 {
-                                    labelCol: { span: 6 },
-                                    wrapperCol: { span: 4 }
+                                    labelCol: { span: 12 },
+                                    wrapperCol: { span: 12 }
                                 }
                                 }
-                                label="Caractere:">
-                                {getFieldDecorator('caractere_empresa', {
-                                    initialValue: '',
+                                label="Identificador de Linha:">
+                                {getFieldDecorator('identificadorLinha', {
+                                    initialValue: false,
+                                    valuePropName: 'checked',
                                     rules: [{
                                         required: true,
                                         message: 'Este campo é obrigatório!'
                                     }]
-                                })(<Input />)}
+                                })(<Switch />)}
                             </FormItem>
+                            </Col>*/}
 
+                        {/*        
+                        <Col span={6}>
+                            <FormItem style={{ width: '100%', left: '0px' }}
+                                {...
+                                {
+                                    labelCol: { span: 8 },
+                                    wrapperCol: { span: 8 }
+                                }
+                                }
+                                label="Cabeçalho:">
+                                {getFieldDecorator('cabecalho', {
+                                    initialValue: this.record && this.record.cabecalho ? this.record.cabecalho == true : false,
+                                    valuePropName: 'checked',
+                                    rules: [{
+                                        required: true,
+                                        message: 'Este campo é obrigatório!'
+                                    }]
+                                })(<Switch />)}
+                            </FormItem>
                         </Col>
-                    </div>
-                </Row>
-                <FormItem style={{ width: '100%', left: '0px' }}
-                    {...
-                    {
-                        labelCol: { span: 4 },
-                        wrapperCol: { span: 5 }
-                    }
-                    }
-                    label="Linha:">
-                    <Row gutter={8}>
-                        <Col span={12}>
-                            {getFieldDecorator('linha_empresa', {
-                                initialValue: ''
-                            })(
-                                <InputNumber />
-                            )}
-                        </Col>
+                        */}
+
                     </Row>
-                </FormItem>
 
+                    {this.state.tipo_delimitador == 2
+                        ?
 
-
-                {/* 
-                    Informações do arquivo
-                */}
-
-                <Divider style={{ fontSize: 22 }} >Arquivo</Divider>
-
-                <FormItem hidden={true} style={{ width: '40%', left: '0px' }}
-                    {...formItemLayout} label="ID">
-                    {getFieldDecorator('id', {})(<Input disabled={true} />)}
-                </FormItem>
-
-                <FormItem hidden={this.hiddenCopia} style={{ width: '100%', left: '0px' }}
-                    {...
-                    {
-                        labelCol: { span: 4 },
-                        wrapperCol: { span: 16 }
-                    }
-                    }
-                    label="Cópia:">
-                    {getFieldDecorator('copia', {})(<Input disabled={true} />)}
-                </FormItem>
-
-
-
-                <Row gutter={20}>
-                    <Col span={4}>
                         <FormItem style={{ width: '100%', left: '0px' }}
                             {...
                             {
-                                labelCol: { span: 8 },
-                                wrapperCol: { span: 8 }
+                                labelCol: { span: 4 },
+                                wrapperCol: { span: 5 }
                             }
                             }
-                            label="Padrão:">
-                            {getFieldDecorator('padrao', {
-                                initialValue: false,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Switch />)}
-                        </FormItem>
-                    </Col>
+                            label="Linha:">
+                            <Row gutter={8}>
+                                <Col span={12}>
+                                    {getFieldDecorator('linha', {
+                                        initialValue: ''
+                                    })(
+                                        <InputNumber />
+                                    )}
+                                </Col>
 
-                    <Col span={8}>
+                                <Col span={12}>
+                                    <Button onClick={this.adicionarLinha} icon="plus" type="primary" >
+                                        Add Linha
+                                    </Button>
+                                </Col>
+
+                            </Row>
+                        </FormItem>
+
+
+                        :
+
+
                         <FormItem style={{ width: '100%', left: '0px' }}
                             {...
                             {
-                                labelCol: { span: 12 },
-                                wrapperCol: { span: 12 }
+                                labelCol: { span: 4 },
+                                wrapperCol: { span: 5 }
                             }
                             }
-                            label="Identificador de Linha:">
-                            {getFieldDecorator('identificadorLinha', {
-                                initialValue: false,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Switch />)}
+                            label="Tabela:">
+                            <Row gutter={8}>
+                                <Col span={12}>
+                                    {getFieldDecorator('linha', {
+                                        initialValue: ''
+                                    })(
+                                        <Input onChange={this.nomeTabelaChanged} />
+                                    )}
+                                </Col>
+
+                                <Col span={12}>
+                                    <Button onClick={this.adicionarTabela} icon="plus" type="primary" >
+                                        Add Tabela
+                                    </Button>
+                                </Col>
+                            </Row>
                         </FormItem>
-                    </Col>
-
-                    <Col span={6}>
-                        <FormItem style={{ width: '100%', left: '0px' }}
-                            {...
-                            {
-                                labelCol: { span: 8 },
-                                wrapperCol: { span: 8 }
-                            }
-                            }
-                            label="Delimitador:">
-                            {getFieldDecorator('delimitador', {
-                                initialValue: this.state.tipo_delimitador_arquivo,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Select
-                                value={this.state.tipo_delimitador_arquivo}
-                                onChange={this.tipoDelimitadorInfosChanged}
-                                style={{ width: 120 }}
-                            >
-                                <Option value="1">Caractere</Option>
-                                <Option value="2">Posições</Option>
-                            </Select>)}
-                        </FormItem>
-
-
-                    </Col>
-
-                    <Col span={6}>
-                        <FormItem style={{ width: '100%', left: '0px' }}
-                            {...
-                            {
-                                labelCol: { span: 8 },
-                                wrapperCol: { span: 8 }
-                            }
-                            }
-                            label="Cabeçalho:">
-                            {getFieldDecorator('cabecalho', {
-                                initialValue: false,
-                                valuePropName: 'checked',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Switch />)}
-                        </FormItem>
-                    </Col>
-
-                </Row>
-                <Row>
-                    <Col md={{ offset: 10 }}>
-                        <FormItem hidden={this.state.tipo_delimitador_arquivo != 1}
-                            {...
-                            {
-                                labelCol: { span: 6 },
-                                wrapperCol: { span: 4 }
-                            }
-                            }
-                            label="Caractere:">
-                            {getFieldDecorator('caractere', {
-                                initialValue: '',
-                                rules: [{
-                                    required: true,
-                                    message: 'Este campo é obrigatório!'
-                                }]
-                            })(<Input />)}
-                        </FormItem>
-
-                    </Col>
-
-                </Row>
-                <FormItem style={{ width: '100%', left: '0px' }}
-                    {...
-                    {
-                        labelCol: { span: 4 },
-                        wrapperCol: { span: 5 }
                     }
-                    }
-                    label="Linha:">
-                    <Row gutter={8}>
-                        <Col span={12}>
-                            {getFieldDecorator('linha', {
-                                initialValue: ''
-                            })(
-                                <InputNumber />
-                            )}
-                        </Col>
 
-                        <Col span={12}>
-                            <Button onClick={this.adicionarLinha} icon="plus" type="primary" >
-                                Add Linha
-                                </Button>
-                        </Col>
-                    </Row>
-                </FormItem>
 
-                <Button onClick={this.onSubmit} icon="save" type="primary" size='small'
-                    style={{
-                        float: 'right',
-                        width: 100, height: 35, marginBottom: 15, backgroundColor: "#00BF39", borderColor: "#00BF39"
-                    }}>
-                    Salvar
+                    <Button onClick={this.onSubmit} icon="save" type="primary" size='small'
+                        style={{
+                            float: 'right',
+                            width: 100, height: 35, marginBottom: 15, backgroundColor: "#00BF39", borderColor: "#00BF39"
+                        }}>
+                        Salvar
                 </Button>
 
-                <br></br>
-                <br></br>
-                <br></br>
+                    <br></br>
+                    <br></br>
+                    <br></br>
 
-                <div>
-                    <Collapse accordion>
+                    <div>
+                        <Collapse accordion>
 
-                        {Object.entries(this.state.linhas).map(([key, item]) => (
 
-                            <Panel header={item.descricaoLinha} key={item.codLinha}
-                                extra={<Icon type="delete" onClick={event => {
-                                    this.deleteLinha(item.codLinha)
-                                    event.stopPropagation();
-                                }} />}
-                            >
-                                <div>
-                                    <Row gutter={8} type="flex" justify="start">
-                                        <Col span={6}>
-                                            <Input name={item.codLinha} value={item.inputTabela} onChange={this.nomeTabelaChanged} />
-                                        </Col>
-                                        <Col span={18}>
-                                            <Button icon="plus" type="primary"
-                                                onClick={() => this.adicionarTabela(item.codLinha)}
-                                            >
-                                                Buscar Tabela
-                                            </Button>                                            
-                                        </Col>
+                            {
+
+                                this.state.tipo_delimitador == 2
+                                    ?
+
+                                    Object.entries(this.state.linhas).map(([key, item]) => (
+
+                                        <Panel header={item.descricaoLinha} key={item.codLinha}
+                                            extra={<Icon type="delete" onClick={event => {
+                                                this.deleteLinha(item.codLinha)
+                                                event.stopPropagation();
+                                            }} />}
+                                        >
+                                            <div>
+                                                <Row gutter={8} type="flex" justify="start">
+                                                    <Col span={6}>
+                                                        <Input name={item.codLinha} value={item.inputTabela} onChange={this.nomeTabelaChanged} />
+                                                    </Col>
+                                                    <Col span={18}>
+                                                        <Button icon="plus" type="primary"
+                                                            onClick={() => this.adicionarTabela(item.codLinha)}
+                                                        >
+                                                            Nova Tabela
+                                            </Button>
+                                                    </Col>
+                                                </Row>
+                                            </div>
+                                            <Row>
+                                                {item.nomeTabelas.map(nome => (
+                                                    <Col key={item.tabelas[nome].key} span={12} style={{ padding: '5px' }}>
+                                                        <h1>
+                                                            <Divider style={{ fontSize: 15 }}>{item.tabelas[nome].nome}
+                                                                <Icon type="delete" style={{ marginLeft: '10px' }} onClick={event => {
+                                                                    this.deleteTabela(item.codLinha, item.tabelas[nome].nome)
+                                                                    event.stopPropagation();
+                                                                }} /></Divider>
+
+                                                            <Table
+                                                                key={item.tabelas[nome].key}
+                                                                components={this.state.components}
+                                                                rowClassName={() => 'editable-row'}
+                                                                bordered
+                                                                dataSource={item.tabelas[nome].dados}
+                                                                columns={this.state.columns}
+                                                            />
+                                                            {item.tabelas[nome].problema ?
+                                                                <span style={{ color: '#F00' }}>Valor inserido é inválido.</span>
+                                                                :
+                                                                ''
+                                                            }
+                                                        </h1>
+
+                                                    </Col>
+                                                ))}
+                                            </Row>
+
+                                        </Panel>
+                                    ))
+
+                                    :
+                                    < Row >
+
+                                        {this.state.tabelas.map(tabela => (
+                                            <Col key={tabela.key} span={12} style={{ padding: '5px' }}>
+                                                <h1>
+                                                    <Divider style={{ fontSize: 15 }}>{tabela.nome}
+                                                        <Icon type="delete" style={{ marginLeft: '10px' }} onClick={event => {
+                                                            this.deleteTabela(item.codLinha, tabela.nome)
+                                                            event.stopPropagation();
+                                                        }} /></Divider>
+
+                                                    <Table
+                                                        key={tabela.key}
+                                                        components={this.state.components}
+                                                        rowClassName={() => 'editable-row'}
+                                                        bordered
+                                                        dataSource={tabela.dados}
+                                                        columns={this.state.columns}
+                                                    />
+                                                    {tabela.problema ?
+                                                        <span style={{ color: '#F00' }}>Valor inserido é inválido.</span>
+                                                        :
+                                                        ''
+                                                    }
+                                                </h1>
+
+                                            </Col>
+                                        ))
+                                        }
                                     </Row>
-                                </div>
-                                <Row>
-                                    {item.nomeTabelas.map(nome => (
-                                        <Col key={item.tabelas[nome].key} span={12} style={{ padding: '5px' }}>
-                                            <h1>
-                                                <Divider style={{ fontSize: 15 }}>{item.tabelas[nome].nome}
-                                                    <Icon type="delete" style={{ marginLeft: '10px' }} onClick={event => {
-                                                        this.deleteTabela(item.codLinha, item.tabelas[nome].nome)
-                                                        event.stopPropagation();
-                                                    }} /></Divider>
 
-                                                <Table
-                                                    key={item.tabelas[nome].key}
-                                                    components={this.state.components}
-                                                    rowClassName={() => 'editable-row'}
-                                                    bordered
-                                                    dataSource={item.tabelas[nome].dados}
-                                                    columns={this.state.columns}
-                                                />
-                                                {item.tabelas[nome].problema ?
-                                                    <span style={{ color: '#F00' }}>Valor inserido é inválido.</span>
-                                                    :
-                                                    ''
-                                                }
-                                            </h1>
+                            }
 
-                                        </Col>
-                                    ))}
-                                </Row>
-
-                            </Panel>
-                        ))}
-
-                    </Collapse>
+                        </Collapse>
+                    </div>
                 </div>
 
             </Form >

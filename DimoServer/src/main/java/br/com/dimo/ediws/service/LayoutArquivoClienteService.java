@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import br.com.dimo.ediws.dto.CampoErroDTO;
+import br.com.dimo.ediws.dto.cadastro.layout.CadastroClienteLayoutDTO;
 import br.com.dimo.ediws.entity.LayoutArquivoCliente;
 import br.com.dimo.ediws.repository.LayoutArquivoClienteRepository;
 
@@ -31,12 +32,16 @@ public class LayoutArquivoClienteService {
 		return erros;
 	}
 	
-	public List<CampoErroDTO> salvarLayoutCliente(LayoutArquivoCliente layoutArquivoCliente) {		
+	public List<CampoErroDTO> salvarLayoutCliente(CadastroClienteLayoutDTO cadastroClienteLayoutDTO) {		
+				
+		LayoutArquivoCliente layoutArquivoCliente = new LayoutArquivoCliente(cadastroClienteLayoutDTO.getIdCliente(), 
+				cadastroClienteLayoutDTO.getIdLayout(),	cadastroClienteLayoutDTO.getDataInicio(), 
+				cadastroClienteLayoutDTO.getDataFim());
 		
-		List<CampoErroDTO> errors = this.clienteService.salvar(layoutArquivoCliente.getCliente());		
+		List<CampoErroDTO> errors = this.clienteService.salvar(cadastroClienteLayoutDTO.getCliente());		
 			
 		if (errors.isEmpty()) {		
-			layoutArquivoCliente.setIdCliente(layoutArquivoCliente.getCliente().getId());
+			layoutArquivoCliente.setIdCliente(cadastroClienteLayoutDTO.getCliente().getId());
 			
 			errors = this.validaSalvar(layoutArquivoCliente);
 			if (errors.isEmpty()) {

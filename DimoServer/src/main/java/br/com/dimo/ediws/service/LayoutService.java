@@ -15,9 +15,11 @@ import br.com.dimo.ediws.connection.ConexaoJDBC;
 import br.com.dimo.ediws.connection.ConnectionPostgresJDBC;
 import br.com.dimo.ediws.dto.CampoErroDTO;
 import br.com.dimo.ediws.dto.TabelaCampoDTO;
+import br.com.dimo.ediws.dto.TabelaDTO;
 import br.com.dimo.ediws.dto.cadastro.layout.CadastroLayoutArquivoCamposDTO;
 import br.com.dimo.ediws.dto.cadastro.layout.CadastroLayoutArquivoDTO;
 import br.com.dimo.ediws.dto.cadastro.layout.CadastroLayoutDTO;
+import br.com.dimo.ediws.dto.cadastro.layout.LayoutDTO;
 import br.com.dimo.ediws.entity.Layout;
 import br.com.dimo.ediws.entity.LayoutArquivo;
 import br.com.dimo.ediws.entity.LayoutArquivoCampoTabela;
@@ -49,22 +51,8 @@ public class LayoutService {
 
 	@Autowired
 	LayoutArquivoClienteRepository layoutArquivoClienteRepository;
-	
+
 	private ConexaoJDBC conexao = null;
-	
-	
-
-	public List<CampoErroDTO> salvar(Layout layout) {
-
-		List<CampoErroDTO> erros = this.validaSalvar(layout);
-
-		if (erros.isEmpty()) {
-			this.layoutRepository.save(layout);
-		}
-
-		return erros;
-
-	}
 
 	@org.springframework.transaction.annotation.Transactional
 	public List<CampoErroDTO> salvarLayout(CadastroLayoutDTO cadastroDTO) {
@@ -75,35 +63,37 @@ public class LayoutService {
 
 		try {
 			/**** salvo layout ****/
-			erros = this.validaSalvar(cadastroDTO.layout);
-			if (erros.isEmpty()) {
-				layout = this.layoutRepository.save(cadastroDTO.layout);
 
-				/**** faço for dos identificadores de linha ****/
+			layout = new Layout(cadastroDTO.layout.getId(), cadastroDTO.layout.getDescricao(),
+					cadastroDTO.layout.getPadrao(), cadastroDTO.layout.getIdentificadorLinha(),
+					cadastroDTO.layout.getTipoDelimitador(),
+					cadastroDTO.layout.getPosicaoInicial(), cadastroDTO.layout.getPosicaoFinal(),
+					cadastroDTO.layout.getDelimitador(), cadastroDTO.layout.getIndexador(), 
+					cadastroDTO.layout.getNomeEmpresa(), cadastroDTO.layout.getCabecalho());
+
+			erros = this.validaSalvar(layout);
+			if (erros.isEmpty()) {
+				layout = this.layoutRepository.save(layout);
+
+				/**** faço for das linha ****/
 				for (CadastroLayoutArquivoDTO listaArquivos : cadastroDTO.getCadastroLayoutArquivoDTOs()) {
 					existeArquivos = true;
 
-					LayoutArquivo arquivo = new LayoutArquivo(layout.getId(), listaArquivos.getIdentificadorLinha());
+					LayoutArquivo arquivo = new LayoutArquivo(listaArquivos.getId(), layout.getId(),
+							listaArquivos.getIdentificadorLinha());
 
 					erros = this.validaSalvarLayoutArquivo(arquivo);
 					if (erros.isEmpty()) {
-						/**** salvo identificador de linha ****/
+						/**** salvo linha ****/
 						arquivo = this.layoutArquivoRepository.save(arquivo);
 
 						for (CadastroLayoutArquivoCamposDTO campos : listaArquivos.getCadastroLayoutArquivoDTOs()) {
 							existeCampos = true;
 
 							/**** salvo campos ****/
-							erros = this.salvarCampo(campos, arquivo.getId(), layout.getId());
-							if (!erros.isEmpty()) break;
-
-//							/**** salvo delimitacoes ****/
-//							erros = this.salvarDelimitacoes(campos, arquivo.getId(), layout.getId());
-//							if (!erros.isEmpty()) break;
-//
-//							/**** salvo nometabela ****/
-//							erros = this.salvarNomeTabela(campos, arquivo.getId(), layout.getId());
-//							if (!erros.isEmpty()) break;
+							erros = this.salvarCampo(campos, layout, arquivo.getId(), layout.getId());
+							if (!erros.isEmpty())
+								break;
 						}
 					} else {
 						break;
@@ -137,61 +127,35 @@ public class LayoutService {
 		return erros;
 	}
 
-	public List<CampoErroDTO> salvarCampo(CadastroLayoutArquivoCamposDTO campos, Long idArquivo, Long idLayout) {
+	public List<CampoErroDTO> salvarCampo(CadastroLayoutArquivoCamposDTO campos, Layout layout, Long idArquivo,
+			Long idLayout) {
 		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
 
-		LayoutArquivoCampoTabela layoutArquivoCampo = new LayoutArquivoCampoTabela(idArquivo,
-				idLayout, campos.getNomeCampo(), campos.getNomeCampoTabela(), campos.getJsonDepara(), 
-				campos.getCaractere(), campos.getIndexador(),
-				campos.getPosicaoInicial(), campos.getPosicaoFinal(), campos.getNomeTabela());
+		String jsonDepara = campos.getJsonDepara().toString();
 
-		erros = this.validaSalvarLayoutCampo(layoutArquivoCampo);
-		if (erros.isEmpty()) {
-			this.layoutArquivoCampoRepository.save(layoutArquivoCampo);
+		LayoutArquivoCampoTabela layoutArquivoCampo = new LayoutArquivoCampoTabela(campos.getId(), idArquivo, idLayout,
+				campos.getNomeCampo(), campos.getNomeCampoTabela(), jsonDepara, layout.getDelimitador(),
+				campos.getIndexador(), campos.getPosicaoInicial(), campos.getPosicaoFinal(), campos.getNomeTabela());
+
+		if (campos.getId() != null) {
+			if (campos.getPosicaoInicial() != null && campos.getPosicaoInicial() != null
+					&& campos.getIndexador() != null) {
+				this.layoutArquivoCampoRepository.delete(layoutArquivoCampo);
+			} else {
+				erros = this.validaSalvarLayoutCampo(layoutArquivoCampo);
+				if (erros.isEmpty()) {
+					this.layoutArquivoCampoRepository.save(layoutArquivoCampo);
+				}
+			}
+		} else {
+			erros = this.validaSalvarLayoutCampo(layoutArquivoCampo);
+			if (erros.isEmpty()) {
+				this.layoutArquivoCampoRepository.save(layoutArquivoCampo);
+			}
 		}
 
 		return erros;
 	}
-	
-//	public List<CampoErroDTO> salvarCampo(CadastroLayoutArquivoCamposDTO campos, Long idArquivo, Long idLayout) {
-//		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
-//
-//		LayoutArquivoCampo layoutArquivoCampo = new LayoutArquivoCampo(idArquivo, idLayout, campos.getNomeCampo(),
-//				campos.getNomeCampoTabela(), campos.getJsonDepara());
-//
-//		erros = this.validaSalvarLayoutCampo(layoutArquivoCampo);
-//		if (erros.isEmpty()) {
-//			this.layoutArquivoCampoRepository.save(layoutArquivoCampo);
-//		}
-//
-//		return erros;
-//	}
-//
-//	public List<CampoErroDTO> salvarDelimitacoes(CadastroLayoutArquivoCamposDTO campos, Long idArquivo, Long idLayout) {
-//		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
-//
-//		LayoutArquivoDelimitacao layoutArquivoDelimitacao = new LayoutArquivoDelimitacao(idArquivo, idLayout,
-//				campos.getCaractere(), campos.getIndexador(), campos.getPosicaoInicial(), campos.getPosicaoFinal());
-//
-//		erros = this.validaSalvarLayoutDelimitacao(layoutArquivoDelimitacao);
-//		if (erros.isEmpty()) {
-//			this.layoutArquivoDelimitadorRepository.save(layoutArquivoDelimitacao);
-//		}
-//
-//		return erros;
-//	}
-//
-//	public List<CampoErroDTO> salvarNomeTabela(CadastroLayoutArquivoCamposDTO campos, Long idArquivo, Long idLayout) {
-//		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
-//
-//		LayoutArquivoTabela layoutArquivoTabela = new LayoutArquivoTabela(idArquivo, idArquivo, campos.getNomeTabela());
-//		erros = this.validaSalvarLayoutTabela(layoutArquivoTabela);
-//		if (erros.isEmpty()) {
-//			this.layoutArquivoTabelaRepository.save(layoutArquivoTabela);
-//		}
-//
-//		return erros;
-//	}
 
 	public List<CampoErroDTO> validaSalvar(Layout layoutNotfis) {
 
@@ -204,19 +168,14 @@ public class LayoutService {
 
 		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
 
-//		if (layoutArquivo.getIdLayout() == null) {
-//			erros.add(new CampoErroDTO("idLayout", "ID Layout é campo obrigatório"));
-//		}
-
 		if (layoutArquivo.getIdentificadorLinha() == null) {
-
 			// erros.add(new CampoErroDTO("identificadorLinha", "Identificador da linha é
 			// campo obrigatório"));
 		}
 
 		return erros;
 	}
-	
+
 	public List<CampoErroDTO> validaSalvarLayoutCampo(LayoutArquivoCampoTabela layoutArquivoCampo) {
 
 		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
@@ -232,25 +191,21 @@ public class LayoutService {
 		if (layoutArquivoCampo.getNomeCampoTabela() == null || layoutArquivoCampo.getNomeCampoTabela() == "") {
 			erros.add(new CampoErroDTO("nomeCampoTabela", "Nome do campo na tabela é campo obrigatório"));
 		}
-		
+
 		if (layoutArquivoCampo.getIdLayout() == null) {
 			erros.add(new CampoErroDTO("idLayout", "ID Layout é campo obrigatório"));
 		}
 
-		if (layoutArquivoCampo.getCaractere() == null) {
+		if (layoutArquivoCampo.getCaractere() == null || layoutArquivoCampo.getCaractere().equals("")) {
+			if (layoutArquivoCampo.getPosicaoInicial() == null) {
+				erros.add(new CampoErroDTO("posicaoInicial", "Posição Inicial é campo obrigatório"));
+			}
 
-			// erros.add(new CampoErroDTO("identificadorLinha", "Identificador da linha é
-			// campo obrigatório"));
+			if (layoutArquivoCampo.getPosicaoFinal() == null) {
+				erros.add(new CampoErroDTO("posicaoFinal", "Posição Final é campo obrigatório"));
+			}
 		}
 
-		if (layoutArquivoCampo.getPosicaoInicial() == null) {
-			erros.add(new CampoErroDTO("posicaoInicial", "Posição Inicial é campo obrigatório"));
-		}
-
-		if (layoutArquivoCampo.getPosicaoFinal() == null) {
-			erros.add(new CampoErroDTO("posicaoFinal", "Posição Final é campo obrigatório"));
-		}
-		
 		if (layoutArquivoCampo.getIdLayout() == null) {
 			erros.add(new CampoErroDTO("idLayout", "ID Layout é campo obrigatório"));
 		}
@@ -262,78 +217,29 @@ public class LayoutService {
 		return erros;
 	}
 
-//	public List<CampoErroDTO> validaSalvarLayoutDelimitacao(LayoutArquivoDelimitacao layoutArquivoDelimitacao) {
-//
-//		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
-//
-//		if (layoutArquivoDelimitacao.getIdLayout() == null) {
-//			erros.add(new CampoErroDTO("idLayout", "ID Layout é campo obrigatório"));
-//		}
-//
-//		if (layoutArquivoDelimitacao.getCaractere() == null) {
-//
-//			// erros.add(new CampoErroDTO("identificadorLinha", "Identificador da linha é
-//			// campo obrigatório"));
-//		}
-//
-//		if (layoutArquivoDelimitacao.getPosicaoInicial() == null) {
-//			erros.add(new CampoErroDTO("posicaoInicial", "Posição Inicial é campo obrigatório"));
-//		}
-//
-//		if (layoutArquivoDelimitacao.getPosicaoFinal() == null) {
-//			erros.add(new CampoErroDTO("posicaoFinal", "Posição Final é campo obrigatório"));
-//		}
-//
-//		return erros;
-//	}
-//
-//	public List<CampoErroDTO> validaSalvarLayoutCampo(LayoutArquivoCampo layoutArquivoCampo) {
-//
-//		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
-//
-//		if (layoutArquivoCampo.getIdLayout() == null) {
-//			erros.add(new CampoErroDTO("idLayout", "ID Layout é campo obrigatório"));
-//		}
-//
-//		if (layoutArquivoCampo.getNomeCampo() == null || layoutArquivoCampo.getNomeCampo() == "") {
-//			erros.add(new CampoErroDTO("nomeCampo", "Nome do campo é campo obrigatório"));
-//		}
-//
-//		if (layoutArquivoCampo.getNomeCampoTabela() == null || layoutArquivoCampo.getNomeCampoTabela() == "") {
-//			erros.add(new CampoErroDTO("nomeCampoTabela", "Nome do campo na tabela é campo obrigatório"));
-//		}
-//
-//		return erros;
-//	}
-//
-//	public List<CampoErroDTO> validaSalvarLayoutTabela(LayoutArquivoTabela layoutArquivoTabela) {
-//
-//		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
-//
-//		if (layoutArquivoTabela.getIdLayout() == null) {
-//			erros.add(new CampoErroDTO("idLayout", "ID Layout é campo obrigatório"));
-//		}
-//
-//		if (layoutArquivoTabela.getNomeTabela() == null || layoutArquivoTabela.getNomeTabela() == "") {
-//			erros.add(new CampoErroDTO("nomeTabela", "Nome da tabela é campo obrigatório"));
-//		}
-//
-//		return erros;
-//	}
-
-	public List<CampoErroDTO> deletar(List<Layout> layoutNotfis) {
+	public List<CampoErroDTO> deletar(List<LayoutDTO> layouts) {
 		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
 
-		for (Layout layout : layoutNotfis) {
+		for (LayoutDTO layoutDTO : layouts) {
+
+			Layout layout = this.layoutRepository.findLayout(layoutDTO.getId());
+
 			List<CampoErroDTO> errosRegistro = this.validaDeletar(layout);
 
 			if (!errosRegistro.isEmpty()) {
 				erros.addAll(errosRegistro);
-			}
-		}
+			} else {
 
-		if (erros.isEmpty()) {
-			this.layoutRepository.deleteAll(layoutNotfis);
+				List<LayoutArquivo> layoutsArquivos = this.layoutArquivoRepository.findAllByIdLayout(layout.getId());
+
+				for (LayoutArquivo layoutArquivo : layoutsArquivos) {
+					this.layoutArquivoCampoRepository.deleteAll(layoutArquivo.getLayoutArquivoCampoTabelas());
+
+					this.layoutArquivoRepository.delete(layoutArquivo);
+				}
+
+				this.layoutRepository.delete(layout);
+			}
 		}
 
 		return erros;
@@ -371,33 +277,78 @@ public class LayoutService {
 			}
 		}
 	}
-	
-	public List<TabelaCampoDTO> buscarTabelaBanco(String nomeTabela) throws SQLException {
+
+	public List<TabelaDTO> buscarTabelasBanco(List<TabelaDTO> tabelas) throws SQLException {
+
+		this.conexao = new ConnectionPostgresJDBC();
+
+		DatabaseMetaData dbm = this.conexao.getConnection().getMetaData();
+
+		for (TabelaDTO tabela : tabelas) {
+
+			ResultSet tables = dbm.getTables(null, null, tabela.getNomeTabela(), null);
+			if (tables.next()) {
+				
+				List<TabelaCampoDTO> campos = new ArrayList<TabelaCampoDTO>();
+				
+				campos = this.lerTabela(tabela, dbm);
+
+				tabela.setCampos(campos);
+			}
+		}
+
+		return tabelas;
+	}
+
+	public List<TabelaCampoDTO> buscarTabelaBanco(TabelaDTO tabela) throws SQLException {
 		List<TabelaCampoDTO> campos = new ArrayList<TabelaCampoDTO>();
 
 		this.conexao = new ConnectionPostgresJDBC();
 		
 		DatabaseMetaData dbm = this.conexao.getConnection().getMetaData();
-
-		ResultSet tables = dbm.getTables(null, null, nomeTabela, null);
-		if (tables.next()) {
-			Statement stmt = this.conexao.getConnection().createStatement();
-			
-	        ResultSet rs = stmt.executeQuery("SELECT * FROM " + nomeTabela + " LIMIT 1");
-	        ResultSetMetaData rsmd = rs.getMetaData();
-	        int columnCount = rsmd.getColumnCount();
-
-	        for (int i = 1; i <= columnCount; i++ ) {
-	        	TabelaCampoDTO campo = new TabelaCampoDTO();
-	        	campo.nomeCampo = rsmd.getColumnName(i);
-	        	campo.tipoCampo = rsmd.getColumnTypeName(i);
-  
-	        	campos.add(campo);
-	        }
-		}     
-
+		
+		campos = this.lerTabela(tabela, dbm);
+		
 		return campos;
 	}
 	
+	public List<TabelaCampoDTO> lerTabela(TabelaDTO tabela, DatabaseMetaData dbm) throws SQLException {
+		List<TabelaCampoDTO> campos = new ArrayList<TabelaCampoDTO>();
+		
+		if (tabela.getNomeTabela() != null) {
+			ResultSet tables = dbm.getTables(null, null, tabela.getNomeTabela(), null);
+			if (tables.next()) {
+				Statement stmt = this.conexao.getConnection().createStatement();
+
+				ResultSet rs = stmt.executeQuery("SELECT * FROM " + tabela.getNomeTabela() + " LIMIT 1");
+				ResultSetMetaData rsmd = rs.getMetaData();
+				int columnCount = rsmd.getColumnCount();
+				
+
+				for (int i = 1; i <= columnCount; i++) {	
+					String nomeCampo = rsmd.getColumnName(i);
+					
+					boolean fk = false;
+					
+					if (nomeCampo.length() > 2) {
+						if (nomeCampo.substring(0, 3).equals("id_")) {
+							fk = true;	
+						}
+					}
+						
+					if (!nomeCampo.equals("id") && !fk) {
+						TabelaCampoDTO campo = new TabelaCampoDTO();
+						campo.nomeCampo = rsmd.getColumnName(i);
+						campo.tipoCampo = rsmd.getColumnTypeName(i);
+
+						campos.add(campo);
+					}			
+				}
+			}	
+		}	
+		
+		return campos;
+	}
 	
+
 }

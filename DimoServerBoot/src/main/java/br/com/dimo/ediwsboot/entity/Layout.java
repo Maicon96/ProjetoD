@@ -52,6 +52,11 @@ public class Layout implements Serializable {
 	@Column(name = "indexador")
 	@JsonInclude(value = Include.NON_NULL)
 	private String indexador;
+		
+	@NotNull
+	@Column(name = "nome_empresa")
+	@JsonInclude(value = Include.NON_NULL)
+	private String nomeEmpresa;	
 	
 	
 	public Layout() {
@@ -122,10 +127,17 @@ public class Layout implements Serializable {
 	public void setIndexador(String indexador) {
 		this.indexador = indexador;
 	}
+	
+	public String getNomeEmpresa() {
+		return nomeEmpresa;
+	}
+
+	public void setNomeEmpresa(String nomeEmpresa) {
+		this.nomeEmpresa = nomeEmpresa;
+	}
 
 	public static long getSerialversionuid() {
 		return serialVersionUID;
 	}
-
 			
 }

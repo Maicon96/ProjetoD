@@ -36,12 +36,10 @@ public class FormaRecebimentoFTP implements Serializable {
 	@JsonInclude(value = Include.NON_NULL)
 	private String servidor;
 	
-	@NotNull
 	@Column(name = "usuario")
 	@JsonInclude(value = Include.NON_NULL)
 	private String usuario;
 	
-	@NotNull
 	@Column(name = "senha")
 	@JsonInclude(value = Include.NON_NULL)
 	private String senha;

@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import br.com.dimo.ediws.dto.CampoErroDTO;
 import br.com.dimo.ediws.dto.LoadResponseDTO;
 import br.com.dimo.ediws.dto.ResponseDTO;
+import br.com.dimo.ediws.dto.cadastro.layout.CadastroClienteLayoutDTO;
 import br.com.dimo.ediws.entity.LayoutArquivoCliente;
 import br.com.dimo.ediws.repository.LayoutArquivoClienteRepository;
 import br.com.dimo.ediws.service.ClienteService;
@@ -68,16 +69,16 @@ public class LayoutArquivoClienteResource extends ResponseEntityExceptionHandler
 	
 				
 	@PostMapping("/save")	
-	public ResponseEntity<?> save(@RequestBody LayoutArquivoCliente layoutArquivoCliente) {		
-		ResponseDTO<LayoutArquivoCliente> response = new ResponseDTO<>();
+	public ResponseEntity<?> save(@RequestBody CadastroClienteLayoutDTO cadastroClienteLayoutDTO) {		
+		ResponseDTO<CadastroClienteLayoutDTO> response = new ResponseDTO<>();
 									
 		try {		
-			List<CampoErroDTO> errors = this.layoutArquivoClienteService.salvarLayoutCliente(layoutArquivoCliente);	
+			List<CampoErroDTO> errors = this.layoutArquivoClienteService.salvarLayoutCliente(cadastroClienteLayoutDTO);	
 			if (!errors.isEmpty()) {
 				response.success = false;
 				response.errors = errors;
 			} else {
-				response.registro = layoutArquivoCliente;
+				response.registro = cadastroClienteLayoutDTO;
 			}
 		} catch (Exception e) {
 			response.success = false;

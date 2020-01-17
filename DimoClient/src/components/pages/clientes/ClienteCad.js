@@ -248,7 +248,8 @@ class ClienteCad extends Component {
         ajax.Call({
             url: globalVariables.default.baseURLServer + '/service/layout/arquivo/load/filter',
             fnSetLoading: me.onSetLoading,
-            data: {
+            data:
+            {
                 descricao: descricao
             },
             afterMsgSuccessTrue: function (response) {

@@ -52,8 +52,7 @@ public class LayoutArquivoCampoTabela implements Serializable {
 	@Id
 	@Column(name = "t_import_arquivo_t_import_layout_id")
 	@JsonInclude(value = Include.NON_NULL)
-	private Long idLayout;
-		
+	private Long idLayout;		
 		
 	@Column(name = "nome_campo")
 	@JsonInclude(value = Include.NON_NULL)
@@ -87,14 +86,15 @@ public class LayoutArquivoCampoTabela implements Serializable {
 	@JsonInclude(value = Include.NON_NULL)
 	private String nomeTabela;
 	
-	
+		
 	public LayoutArquivoCampoTabela() {
 		
 	}
 
-	public LayoutArquivoCampoTabela(Long idLayoutArquivo, Long idLayout,
+	public LayoutArquivoCampoTabela(Long id, Long idLayoutArquivo, Long idLayout,
 		    String nomeCampo, String nomeCampoTabela, String jsonDepara, String caractere,
 			String indexador, String posicaoInicial, String posicaoFinal, String nomeTabela) {
+		this.id = id;		
 		this.idLayoutArquivo = idLayoutArquivo;		
 		this.idLayout = idLayout;
 		this.nomeCampo = nomeCampo;
@@ -138,7 +138,7 @@ public class LayoutArquivoCampoTabela implements Serializable {
 	public void setIdLayout(Long idLayout) {
 		this.idLayout = idLayout;
 	}
-
+	
 	public String getNomeCampo() {
 		return nomeCampo;
 	}
@@ -202,7 +202,7 @@ public class LayoutArquivoCampoTabela implements Serializable {
 	public void setNomeTabela(String nomeTabela) {
 		this.nomeTabela = nomeTabela;
 	}
-
+	
 	public static long getSerialversionuid() {
 		return serialVersionUID;
 	}

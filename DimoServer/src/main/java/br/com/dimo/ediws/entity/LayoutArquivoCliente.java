@@ -70,7 +70,14 @@ public class LayoutArquivoCliente implements Serializable {
 		
 	}
 	
-	
+	public LayoutArquivoCliente(Long idCliente, Long idLayout, @NotNull LocalDate dataInicio, LocalDate dataFim) {
+		super();
+		this.idCliente = idCliente;
+		this.idLayout = idLayout;
+		this.dataInicio = dataInicio;
+		this.dataFim = dataFim;
+	}
+
 
 	public Long getIdCliente() {
 		return idCliente;

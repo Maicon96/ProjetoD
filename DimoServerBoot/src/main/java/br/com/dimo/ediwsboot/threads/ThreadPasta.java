@@ -1,5 +1,6 @@
 package br.com.dimo.ediwsboot.threads;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -12,38 +13,35 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import br.com.dimo.ediwsboot.WsApplication;
 import br.com.dimo.ediwsboot.entity.FormaRecebimentoPasta;
-import br.com.dimo.ediwsboot.repository.FormaRecebimentoPastaRepository;
 
 public class ThreadPasta implements Runnable {
-
-	@Autowired
-	private FormaRecebimentoPastaRepository formaRecebimentoPastaRepository;
 	
-	
-	private static final Logger LOG = LoggerFactory.getLogger(WsApplication.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ThreadPasta.class);
 
 	public static Integer TEMPO_PASTA = 10000;
+	public static String diretorioRaiz = "C:/Users/maico/Desktop/ArquivosLayout/";
+	
 	
 	
 	private String nomeThread;
     private List<InputStream> arquivos;
+    private List<FormaRecebimentoPasta> pastas;
     
-    public ThreadPasta(String nomeThread, List<InputStream> arquivos) {
+    public ThreadPasta(String nomeThread, List<InputStream> arquivos, List<FormaRecebimentoPasta> pastas) {
         this.nomeThread = nomeThread;
         this.arquivos = arquivos;
-        Thread t = new Thread(this);
-        t.start();
+        this.pastas = pastas;
+//        Thread t = new Thread(this);
+//        t.start();
     }
     
-    @Override
+//    @Override
     public void run() {
         System.out.println("executando a thread: " + this.nomeThread);
         
-        try {			
+        try {
         	for (int i=0; i<6; i++) {
   	          System.out.println(this.nomeThread + " contador " + i);
   	          Thread.sleep(1000);
@@ -55,6 +53,8 @@ public class ThreadPasta implements Runnable {
         	
 		} catch (Exception e) {
 			e.printStackTrace();
+			
+			//
 		}
         
         System.out.println(this.nomeThread + " Terminou a execução");
@@ -65,30 +65,47 @@ public class ThreadPasta implements Runnable {
 
 		try {
 		
-			Path directory = Paths.get("C:/Users/maico/Desktop/ArquivosLayout/");
-
-			List<FormaRecebimentoPasta> pastas = this.formaRecebimentoEmailRepository.findAll();
+//			for (FormaRecebimentoPasta pasta : pastas) {
+//				
+//			}
 			
-			WatchService watchService = directory.getFileSystem().newWatchService();
+			Path directory = Paths.get("C:/Users/maico/Desktop/ArquivosLayout/");
+			
+			File arquivos[];
+			File diretorio = new File(diretorioRaiz);
+			arquivos = diretorio.listFiles();
+			
+			
 
-			WatchKey watchKey = directory.register(watchService, StandardWatchEventKinds.ENTRY_CREATE,
-					StandardWatchEventKinds.ENTRY_MODIFY);
+			for (File arquivo : arquivos) {
+				System.out.println("Event kind: " + arquivo.getName());			
 
-			for (WatchEvent<?> event : watchKey.pollEvents()) {
-
-				System.out.println("Event kind: " + event.kind());
-				System.out.println("Arquivo affected: " + event.context());
-
-				// leio arquivo
-//					FileReader arquivo = new FileReader("C:/Users/maico/Desktop/ArquivosLayout/" + event.context());
-
-				InputStream arquivo = new FileInputStream("C:/Users/maico/Desktop/ArquivosLayout/" + event.context());
+//				InputStream arquivo = new FileInputStream("C:/Users/maico/Desktop/ArquivosLayout/" + event.context());
 	            
-				this.arquivos.add(arquivo);
-				
-//					this.extrairDadosArquivos(arquivos);
-
-			}		
+//				this.arquivos.add(arquivo.read());
+			}			
+			
+			
+//			WatchService watchService = directory.getFileSystem().newWatchService();
+//
+//			WatchKey watchKey = directory.register(watchService, StandardWatchEventKinds.ENTRY_CREATE,
+//					StandardWatchEventKinds.ENTRY_MODIFY);
+//
+//			for (WatchEvent<?> event : watchKey.pollEvents()) {
+//
+//				System.out.println("Event kind: " + event.kind());
+//				System.out.println("Arquivo affected: " + event.context());
+//
+//				// leio arquivo
+////					FileReader arquivo = new FileReader("C:/Users/maico/Desktop/ArquivosLayout/" + event.context());
+//
+//				InputStream arquivo = new FileInputStream("C:/Users/maico/Desktop/ArquivosLayout/" + event.context());
+//	            
+//				this.arquivos.add(arquivo);
+//				
+////					this.extrairDadosArquivos(arquivos);
+//
+//			}		
 		
 		} catch (Exception ex) {
 			throw new Exception("Falha ao ler arquivos de pasta: " + ex.getMessage());			

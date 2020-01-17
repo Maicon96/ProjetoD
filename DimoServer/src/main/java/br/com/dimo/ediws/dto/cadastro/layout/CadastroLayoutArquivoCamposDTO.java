@@ -1,26 +1,45 @@
 package br.com.dimo.ediws.dto.cadastro.layout;
 
 public class CadastroLayoutArquivoCamposDTO {
-		
-	String caractere;
+	
+	Long id;
+	Long idLayoutArquivo;
+	Long idLayout;
 	String indexador;
 	String posicaoInicial;
 	String posicaoFinal;
 	String nomeCampo;
 	String nomeCampoTabela;
 	String jsonDepara;
-	String nomeTabela;	
+	String nomeTabela;
 	
 	public CadastroLayoutArquivoCamposDTO() {
 		
 	}
 
-	public String getCaractere() {
-		return caractere;
+
+	public Long getId() {
+		return id;
 	}
 
-	public void setCaractere(String caractere) {
-		this.caractere = caractere;
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
+	public Long getIdLayoutArquivo() {
+		return idLayoutArquivo;
+	}
+
+	public void setIdLayoutArquivo(Long idLayoutArquivo) {
+		this.idLayoutArquivo = idLayoutArquivo;
+	}
+
+	public Long getIdLayout() {
+		return idLayout;
+	}
+
+	public void setIdLayout(Long idLayout) {
+		this.idLayout = idLayout;
 	}
 
 	public String getIndexador() {

@@ -12,9 +12,11 @@ public interface LayoutRepository extends JpaRepository<Layout, Long> {
 	
 	Layout findById(long id);
 	
-//	Layout findByIdentificadorEmpresa(String identificadorEmpresa);
+	@Query("SELECT u FROM Layout u WHERE u.id=:id")
+	public Layout findLayout(@Param("id") Long id);
+	
 	
 	@Query("SELECT u FROM Layout u WHERE u.descricao LIKE %:descricao% ORDER BY u.descricao ASC")
 	public List<Layout> findLayoutsDescricao(@Param("descricao") String descricao);	
-		
+	
 }

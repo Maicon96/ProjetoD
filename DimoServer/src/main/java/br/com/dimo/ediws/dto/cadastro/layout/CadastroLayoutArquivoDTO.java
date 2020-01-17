@@ -5,7 +5,8 @@ import java.util.List;
 
 public class CadastroLayoutArquivoDTO {
 
-	String identificadorLinha;	
+	Long id;	
+	Integer identificadorLinha;	
 	List<CadastroLayoutArquivoCamposDTO> cadastroLayoutArquivoDTOs = new  ArrayList<CadastroLayoutArquivoCamposDTO>();	
 	
 		
@@ -14,11 +15,19 @@ public class CadastroLayoutArquivoDTO {
 	}
 
 
-	public String getIdentificadorLinha() {
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public Integer getIdentificadorLinha() {
 		return identificadorLinha;
 	}
 
-	public void setIdentificadorLinha(String identificadorLinha) {
+	public void setIdentificadorLinha(Integer identificadorLinha) {
 		this.identificadorLinha = identificadorLinha;
 	}
 

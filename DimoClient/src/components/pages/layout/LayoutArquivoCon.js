@@ -8,7 +8,7 @@ import LayoutArquivoCad from './LayoutArquivoCad';
 const ajax = require('../../../utils/ajax/ConexaoAjax');
 const globalVariables = require('../../../utils/variaveisGlobais');
 
-let record = {}; 
+let record = {};
 
 export default class LayoutArquivoCon extends Component {
     constructor(props) {
@@ -24,7 +24,7 @@ export default class LayoutArquivoCon extends Component {
             selectedRows: [],
             record: {},
             visible: false
-        };   
+        };
 
     }
 
@@ -34,7 +34,7 @@ export default class LayoutArquivoCon extends Component {
 
     onSetLoading = (cond) => {
         this.setState({ loading: cond });
-    }   
+    }
 
     onClickBtnEdit = (e) => {
         if (this.state.selectedRows.length > 1 || this.state.selectedRows.length === 0) {
@@ -71,13 +71,13 @@ export default class LayoutArquivoCon extends Component {
             url: globalVariables.default.baseURLServer + '/service/layout/arquivo/load',
             fnSetLoading: me.onSetLoading,
             data: "",
-            afterMsgSuccessTrue: function (response) {                
-                me.setState({ data: response.data.registros });               
+            afterMsgSuccessTrue: function (response) {
+                me.setState({ data: response.data.registros });
             }
         });
     }
 
-    onClickBtnCopia = (record) => {   
+    onClickBtnCopia = (record) => {
         const me = this;
 
         record = record;
@@ -103,14 +103,6 @@ export default class LayoutArquivoCon extends Component {
     };
 
     onClickRow = (record, rowIndex, event) => {
-
-        console.log("row");
-        console.log(record);
-        console.log(rowIndex);
-        console.log(event);
-
-        //console.log(this.myRefTable);
-        //console.log(this.myRefTable.current);
 
         //this.myRefTable.current.handleRadioSelect(record, rowIndex, event);        
     };
@@ -138,8 +130,8 @@ export default class LayoutArquivoCon extends Component {
             render: (text, record, index) => {
                 if (text === 1) {
                     return '1 - Sim';
-                } else if (text === 2) {
-                    return '2 - Não';
+                } else if (text === 0) {
+                    return '0 - Não';
                 }
             }
         }, {
@@ -149,8 +141,8 @@ export default class LayoutArquivoCon extends Component {
             width: 50,
             render: (text, record, index) => {
                 return (<div>
-                    <Tooltip title='Criar Cópia do Layout'>                    
-                        <Button shape="circle" type='primary' size='small' onClick={() => this.onClickBtnCopia(record) }
+                    <Tooltip title='Criar Cópia do Layout'>
+                        <Button shape="circle" type='primary' size='small' onClick={() => this.onClickBtnCopia(record)}
                             value={record}
                             style={{ width: 35, height: 35, backgroundColor: "#00BF39", borderColor: "#00BF39" }}>
                             <Link to={{ pathname: '/cadastro/layout/arquivo', params: { data: this.state, record: record } }} >
@@ -173,7 +165,7 @@ export default class LayoutArquivoCon extends Component {
                             <Tooltip title='Editar'>
                                 <Button type='primary' size='small' onClick={this.onClickBtnEdit}
                                     style={{ marginLeft: 5 }}>
-                                    <Link to={{ pathname: '/cadastro/layout/arquivo', params: { data: this.state, record: record } }} >
+                                    <Link to={{ pathname: '/cadastro/layout/arquivo', params: { data: this.state, record: this.state.selectedRows[0] } }} >
                                         <Icon type="edit" />
                                     </Link>
                                 </Button>
@@ -223,16 +215,9 @@ export default class LayoutArquivoCon extends Component {
                     onRow={(record, rowIndex) => {
                         return {
                             onClick: event => {
-
-                                console.log("onRow");
-                                console.log("onClick");
-
                                 this.onClickRow(record, rowIndex, event);
                             },
                             onDoubleClick: event => {
-                                console.log("onRow");
-                                console.log("onDoubleClick");
-
                                 this.onClickRow(record, rowIndex, event);
                             }
                         };
@@ -241,14 +226,10 @@ export default class LayoutArquivoCon extends Component {
                     //caixa de seleçao nos itens
                     rowSelection={{
                         onChange: (selectedRowKeys, selectedRows) => {
-                            console.log("rowSelection");
-                            console.log("onChange");
 
                             this.setState({ selectedRows: selectedRows });
                         },
                         onSelect: (record, selected, selectedRows) => {
-                            console.log("rowSelection");
-                            console.log("onSelect");
 
                             this.setState({ selectedRows: selectedRows });
                         }

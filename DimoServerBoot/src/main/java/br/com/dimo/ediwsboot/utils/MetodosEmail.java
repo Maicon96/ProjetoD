@@ -1,4 +1,4 @@
-package br.com.dimo.ediwsboot.threads;
+package br.com.dimo.ediwsboot.utils;
 
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
@@ -18,16 +18,21 @@ import javax.mail.search.FlagTerm;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import com.sun.mail.pop3.POP3SSLStore;
 import com.sun.mail.util.MailSSLSocketFactory;
 
 import br.com.dimo.ediwsboot.WsApplication;
 import br.com.dimo.ediwsboot.entity.FormaRecebimentoEmail;
-import br.com.dimo.ediwsboot.utils.MetodosEmail;
+import br.com.dimo.ediwsboot.repository.FormaRecebimentoEmailRepository;
 
-//@SpringBootApplication
-public class ThreadEmail implements Runnable {
+@SpringBootApplication
+public class MetodosEmail {
+	
+	@Autowired
+	private FormaRecebimentoEmailRepository formaRecebimentoEmailRepository;
 	
 	private static final Logger LOG = LoggerFactory.getLogger(WsApplication.class);
 
@@ -37,47 +42,19 @@ public class ThreadEmail implements Runnable {
 	private Store store = null;
 	private Folder folder;
 	
-	private String nomeThread;
-    private List<InputStream> arquivos;
-    private List<FormaRecebimentoEmail> emails;
-    
-    public ThreadEmail(String nomeThread, List<InputStream> arquivos, List<FormaRecebimentoEmail> emails) {
-        this.nomeThread = nomeThread;
-        this.arquivos = arquivos;
-        this.emails = emails;
-//        Thread t = new Thread(this);
-//        t.start();
-    }
-    
-    @Override
-    public void run() {
-    	 System.out.println("executando a thread: " + this.nomeThread);
-         
-         try {        	         	 
-        	 this.lerEmails();        	 
-        	          	
-//         	Thread.sleep(TEMPO_PASTA);
-         	
- 		} catch (Exception e) {
- 			e.printStackTrace();
- 		}
-         
-        System.out.println(this.nomeThread + " Terminou a execução");
-    }
-	
-	public void lerEmails() throws NumberFormatException, Exception {
+	public void lerEmails(List<InputStream> arquivos) throws NumberFormatException, Exception {
+		List<FormaRecebimentoEmail> emails = this.formaRecebimentoEmailRepository.findAll();
+		
 		for (FormaRecebimentoEmail email : emails) {
 			this.conectar(email);
 			
-			this.lerMensagensNovas(this.arquivos);	
-		}
-		
-		
+			this.lerMensagensNovas(arquivos);	
+		}	
 	}
 	
 	public void conectar(FormaRecebimentoEmail email) throws Exception {
 
-		try {
+		try {			
 			
 			email.setPop3("smtp.gmail.com");
 			email.setPorta("995");
@@ -146,32 +123,34 @@ public class ThreadEmail implements Runnable {
 		}
 	}
 	
-	public void abrirCaixaSpam(String folderName) throws Exception {
-
-		// Abra a pasta spam de e-mails
-		folder = store.getDefaultFolder();
-
-		folder = folder.getFolder(folderName);
-
-		if (folder == null) {
-			throw new Exception("Falha ao abrir caixa de " + folderName);
-		}
-
-		// Tentar abrir para leitura / gravação
-		try {
-
-			folder.open(Folder.READ_WRITE);
-
-		} catch (MessagingException ex) {	
-			folder.open(Folder.READ_ONLY);
-		} catch (Exception ex) {		
-			throw new Exception("Falha ao abrir caixa de entrada");			
-		}
-	}
+//	public void abrirCaixaSpam(String folderName) throws Exception {
+//
+//		// Abra a pasta spam de e-mails
+//		folder = store.getDefaultFolder();
+//
+//		folder = folder.getFolder(folderName);
+//
+//		if (folder == null) {
+//			throw new Exception("Falha ao abrir caixa de " + folderName);
+//		}
+//
+//		// Tentar abrir para leitura / gravação
+//		try {
+//
+//			folder.open(Folder.READ_WRITE);
+//
+//		} catch (MessagingException ex) {	
+//			folder.open(Folder.READ_ONLY);
+//		} catch (Exception ex) {		
+//			throw new Exception("Falha ao abrir caixa de entrada");			
+//		}
+//	}
 
 	public void lerMensagensNovas(List<InputStream> arquivos) throws Exception {
 
 		try {
+		
+			// search for all "unseen" messages
 			Flags seen = new Flags(Flags.Flag.SEEN);
 			FlagTerm unseenFlagTerm = new FlagTerm(seen, false);
 			Message messages[] = folder.search(unseenFlagTerm);
@@ -180,10 +159,10 @@ public class ThreadEmail implements Runnable {
 			if (messages.length == 0)
 				System.out.println("No messages found.");
 	
-			for (int i = 0; i < messages.length; i++) {
+			for (int i = 30; i < messages.length; i++) {
 				
-//				System.out.println("DELETADO: " + messages[i].getFlags().contains(Flag.DELETED));
-//				System.out.println("SEEN: " + messages[i].getFlags().contains(Flag.SEEN));
+				System.out.println("DELETADO: " + messages[i].getFlags().contains(Flag.DELETED));
+				System.out.println("SEEN: " + messages[i].getFlags().contains(Flag.SEEN));
 				
 				System.out.println("Message " + (i + 1));
 				System.out.println("From : " + messages[i].getFrom()[0]);
@@ -200,11 +179,14 @@ public class ThreadEmail implements Runnable {
 					pr("CONTENT-TYPE: " + (new ContentType(ct)).toString() + " tem anexo");
 					InputStream arquivo = messages[i].getInputStream();
 					
-					arquivos.add(arquivo);
-										
-					//deleto o email
-					messages[i].setFlag(Flags.Flag.DELETED, true);
+					arquivos.add(arquivo);					
 					
+//					File temp = new File("\\teste\\anexo\\");
+//					if (!temp.exists()) {
+//						if (!temp.mkdir()) {
+//							System.out.println("false");
+//						}
+//					}
 				}
 			}
 	

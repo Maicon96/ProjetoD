@@ -27,14 +27,15 @@ public class FormaRecebimentoFTPService {
 		List<CampoErroDTO> erros = this.validaSalvar(formaRecebimentoFTP);
 		if (erros.isEmpty()) {
 			this.formaRecebimentoFTPRepository.save(formaRecebimentoFTP);
+			
+			if (formaRecebimentoFTP.getIdCliente() != null) {
+				ClienteFormaRecebimentoFTP clienteFormaRecebimentoFTP = new ClienteFormaRecebimentoFTP(
+						formaRecebimentoFTP.getIdCliente(), formaRecebimentoFTP.getId());
+				
+				this.clienteFormaRecebimentoFTPRepository.save(clienteFormaRecebimentoFTP);
+			}
 		}	
 		
-		if (formaRecebimentoFTP.getIdCliente() != null) {
-			ClienteFormaRecebimentoFTP clienteFormaRecebimentoFTP = new ClienteFormaRecebimentoFTP(
-					formaRecebimentoFTP.getIdCliente(), formaRecebimentoFTP.getId());
-			
-			this.clienteFormaRecebimentoFTPRepository.save(clienteFormaRecebimentoFTP);
-		}
 		
 		return erros;
 	}
@@ -44,8 +45,8 @@ public class FormaRecebimentoFTPService {
 		List<CampoErroDTO> erros = new ArrayList<CampoErroDTO>();
 
 		this.validaServidor(formaRecebimentoFTP, erros);
-		this.validaUsuario(formaRecebimentoFTP, erros);
-		this.validaSenha(formaRecebimentoFTP, erros);
+//		this.validaUsuario(formaRecebimentoFTP, erros);
+//		this.validaSenha(formaRecebimentoFTP, erros);
 		this.validaTLSSSL(formaRecebimentoFTP, erros);
 		this.validaDiretorio(formaRecebimentoFTP, erros);
 
@@ -59,26 +60,26 @@ public class FormaRecebimentoFTPService {
 		}
 	}
 	
-	public void validaUsuario(FormaRecebimentoFTP formaRecebimentoFTP, List<CampoErroDTO> erros) {
-		if (formaRecebimentoFTP.getUsuario() == "") {		
-			erros.add(new CampoErroDTO("usuario", "Usuário é campo obrigatório"));
-		}
-	}
-	
-	public void validaSenha(FormaRecebimentoFTP formaRecebimentoFTP, List<CampoErroDTO> erros) {
-		if (formaRecebimentoFTP.getSenha() == "") {		
-			erros.add(new CampoErroDTO("senha", "Senha é campo obrigatório"));
-		}
-	}
+//	public void validaUsuario(FormaRecebimentoFTP formaRecebimentoFTP, List<CampoErroDTO> erros) {
+//		if (formaRecebimentoFTP.getUsuario() == "" || formaRecebimentoFTP.getSenha() == null) {		
+//			erros.add(new CampoErroDTO("usuario", "Usuário é campo obrigatório"));
+//		}
+//	}
+//	
+//	public void validaSenha(FormaRecebimentoFTP formaRecebimentoFTP, List<CampoErroDTO> erros) {
+//		if (formaRecebimentoFTP.getSenha() == "" || formaRecebimentoFTP.getSenha() == null) {		
+//			erros.add(new CampoErroDTO("senha", "Senha é campo obrigatório"));
+//		}
+//	}
 	
 	public void validaTLSSSL(FormaRecebimentoFTP formaRecebimentoFTP, List<CampoErroDTO> erros) {
-		if (formaRecebimentoFTP.getTlsSsl() == "") {
+		if (formaRecebimentoFTP.getTlsSsl() == "" || formaRecebimentoFTP.getTlsSsl() == null) {
 			erros.add(new CampoErroDTO("tlsSsl", "TLS/SSL é campo obrigatório"));
 		}
 	}
 	
 	public void validaDiretorio(FormaRecebimentoFTP formaRecebimentoFTP, List<CampoErroDTO> erros) {
-		if (formaRecebimentoFTP.getDiretorio() == "") {
+		if (formaRecebimentoFTP.getDiretorio() == "" || formaRecebimentoFTP.getDiretorio() == null) {
 			erros.add(new CampoErroDTO("diretorio", "Diretório é campo obrigatório"));
 		}
 	}

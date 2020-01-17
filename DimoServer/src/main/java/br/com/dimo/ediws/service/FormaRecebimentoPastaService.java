@@ -28,14 +28,14 @@ public class FormaRecebimentoPastaService {
 		List<CampoErroDTO> erros = this.validaSalvar(formaRecebimentoPasta);
 		if (erros.isEmpty()) {
 			this.formaRecebimentoPastaRepository.save(formaRecebimentoPasta);
-		}
-		
-		if (formaRecebimentoPasta.getIdCliente() != null) {
-			ClienteFormaRecebimentoPasta clienteFormaRecebimentoPasta = new ClienteFormaRecebimentoPasta(
-					formaRecebimentoPasta.getIdCliente(), formaRecebimentoPasta.getId());
 			
-			this.clienteFormaRecebimentoPastaRepository.save(clienteFormaRecebimentoPasta);
-		}
+			if (formaRecebimentoPasta.getIdCliente() != null) {
+				ClienteFormaRecebimentoPasta clienteFormaRecebimentoPasta = new ClienteFormaRecebimentoPasta(
+						formaRecebimentoPasta.getIdCliente(), formaRecebimentoPasta.getId());
+				
+				this.clienteFormaRecebimentoPastaRepository.save(clienteFormaRecebimentoPasta);
+			}
+		}		
 		
 		return erros;		
 	}

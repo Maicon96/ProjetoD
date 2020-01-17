@@ -27,14 +27,14 @@ public class FormaRecebimentoEmailService {
 		List<CampoErroDTO> erros = this.validaSalvar(formaRecebimentoEmail);
 		if (erros.isEmpty()) {
 			this.formaRecebimentoEmailRepository.save(formaRecebimentoEmail);
-		}	
-		
-		if (formaRecebimentoEmail.getIdCliente() != null) {
-			ClienteFormaRecebimentoEmail clienteFormaRecebimentoEmail = new ClienteFormaRecebimentoEmail(
-					formaRecebimentoEmail.getIdCliente(), formaRecebimentoEmail.getId());
 			
-			this.clienteFormaRecebimentoEmailRepository.save(clienteFormaRecebimentoEmail);
-		}
+			if (formaRecebimentoEmail.getIdCliente() != null) {
+				ClienteFormaRecebimentoEmail clienteFormaRecebimentoEmail = new ClienteFormaRecebimentoEmail(
+						formaRecebimentoEmail.getIdCliente(), formaRecebimentoEmail.getId());
+				
+				this.clienteFormaRecebimentoEmailRepository.save(clienteFormaRecebimentoEmail);
+			}
+		}	
 		
 		return erros;
 	}
